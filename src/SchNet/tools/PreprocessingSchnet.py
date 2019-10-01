@@ -3,9 +3,9 @@ import csv
 import numpy as np
 from ase.io import read
 import ase
-#import warnings
 
-class preprocessing_schnet:
+
+class PreprocessingSchnet:
 
     @staticmethod
     def getMolPath(data_path, complex_name, end):
@@ -22,14 +22,14 @@ class preprocessing_schnet:
 
     @staticmethod
     def getAllMolPaths(data_path, end):
-        complexes = preprocessing_schnet.getComplexDirNames(data_path)
+        complexes = PreprocessingSchnet.getComplexDirNames(data_path)
         ligands = []
         for i in range(len(complexes)):
-            ligands.append(preprocessing_schnet.getMolPath(data_path, complexes[i], end))
+            ligands.append(PreprocessingSchnet.getMolPath(data_path, complexes[i], end))
         return ligands, complexes
 
     @staticmethod
-    def extract_k_value(index_row):
+    def extractKValue(index_row):
         label = []
         unit = []
         for i in range(len(index_row[4])):
@@ -55,8 +55,8 @@ class preprocessing_schnet:
         return k
 
     @staticmethod
-    def get_labels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016'):
-        complexnames = preprocessing_schnet.getComplexDirNames(complex_data_path)
+    def calcLabels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016'):
+        complexnames = PreprocessingSchnet.getComplexDirNames(complex_data_path)
         with open(index_path) as f:
             reader = csv.reader(f, delimiter='\t')
             data = [(col1)
@@ -65,15 +65,34 @@ class preprocessing_schnet:
         for i in range(len(data)):
             datas.append(data[i][0].split(' '))
         labels = []
-        units = []
         print(np.shape(np.array(datas)))
         complexes = list(np.array(datas)[:, 0])
         for i in range(len(complexnames)):
             index = complexes.index(complexnames[i])
-            label = preprocessing_schnet.extract_k_value(datas[index])
+            label = PreprocessingSchnet.extractKValue(datas[index])
             labels.append(label)
         for i in range(len(labels)):
             labels[i] = -np.log10(labels[i])
+        return labels
+
+    @staticmethod
+    def getLabels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016'):
+        complexnames = PreprocessingSchnet.getComplexDirNames(complex_data_path)
+        with open(index_path) as f:
+            reader = csv.reader(f, delimiter='\t')
+            data = [(col1)
+                    for col1 in reader]
+        datas = []
+        for i in range(len(data)):
+            datas.append(data[i][0].split(' '))
+        labels = []
+        print(np.shape(np.array(datas)))
+        complexes = list(np.array(datas)[:, 0])
+        for i in range(len(complexnames)):
+            index = complexes.index(complexnames[i])
+            print(datas[index][3])
+            label = np.float(datas[index][3])
+            labels.append(label)
         return labels
 
     @staticmethod
@@ -81,15 +100,17 @@ class preprocessing_schnet:
                        index_path='../Data/index/INDEX_refined_data.2016',
                        ligand_end='_ligand.sdf', alt_ligand_end='_ligand.pdb', prot_end='_pocket.pdb', mode=None,
                        label_type=None, classes=None, n_classes=None, oversample=False, sample_factor=50):
-        #warnings.filterwarnings("error")
-        ligandPaths = preprocessing_schnet.getAllMolPaths(data_path, ligand_end)
-        ligandPaths2 = preprocessing_schnet.getAllMolPaths(data_path, alt_ligand_end)
-        proteinPaths = preprocessing_schnet.getAllMolPaths(data_path, prot_end)
-        labels = preprocessing_schnet.get_labels(data_path, index_path)
+
+        ligandPaths = PreprocessingSchnet.getAllMolPaths(data_path, ligand_end)
+        ligandPaths2 = PreprocessingSchnet.getAllMolPaths(data_path, alt_ligand_end)
+        proteinPaths = PreprocessingSchnet.getAllMolPaths(data_path, prot_end)
+        labels = PreprocessingSchnet.getLabels(data_path, index_path)
+
         indexes = np.arange(len(proteinPaths[0]))
         np.random.shuffle(indexes)
+
         hist = np.histogram(labels, 25)
-        warn = 0
+
         for i in indexes:
             atom_list = []
             try:
@@ -109,60 +130,63 @@ class preprocessing_schnet:
                         atom_list.append(at)
                 except:
                     print('Does not work')
-                    warn += 1
                     continue
-            affi = preprocessing_schnet.getLabel(labels[i], mode, label_type, classes=classes, n_classes=n_classes,
-                                                 min_v=np.min(labels), max_v=np.max(labels))
+
+            affi = PreprocessingSchnet.classLabel(labels[i], mode, label_type, classes=classes, n_classes=n_classes,
+                                                min_v=np.min(labels), max_v=np.max(labels))
+
             mean = np.array([x, y, z])
+
             atoms = read(proteinPaths[0][i], format='proteindatabank')
+
             for at in atoms:
                 dist = np.linalg.norm(at.position - mean)
                 if dist <= threshold:
                     atom_list.append(at)
 
             complexe = [ase.Atoms(atom_list, pbc=(1, 1, 1))]
-            #print(affi)
+
             if not oversample:
                 database.add_systems(complexe, affi)
-            if oversample:
+            else:
                 classn = np.zeros(25)
                 for j in range(len(hist[1]) - 1):
-                    #print(labels[i], hist[1][j])
                     if j == len(hist[1]) - 2:
                         if hist[1][j] <= labels[i] <= hist[1][j + 1]:
                             classn[j] = 1
                     else:
-                        if hist[1][j] <= labels[i] < hist[1][j +1]:
+                        if hist[1][j] <= labels[i] < hist[1][j + 1]:
                             classn[j] = 1
-                #print(np.unique(classn, return_counts=True))
+
                 if np.unique(classn, return_counts=True)[1][1] != 1:
                     print('warning -> Onehot is more than one')
                     print(classn)
+
                 ind = np.argmax(classn)
                 if hist[0][ind] == 0:
                     print('Warning -> zero-sample')
                     continue
+
                 n_sampling = int(np.ceil((1 / hist[0][ind]) * sample_factor * 25))
                 print(i, len(indexes), n_sampling, ind)
-                #print(hist[0], hist[1], np.shape(hist[0]), np.shape(hist[1]))
-                #print(i, n_sampling, ind, hist[0][ind], hist[1][ind], hist[1][ind + 1])
                 for _ in range(n_sampling):
                     database.add_systems(complexe, affi)
-        print(warn)
 
     @staticmethod
-    def getLabel(label, mode=None, label_type=None, min_v=None, max_v=None, classes=None, n_classes=1):
+    def classLabel(label, mode=None, label_type=None, min_v=None, max_v=None, classes=None, n_classes=1):
         if mode is None:
             affi = [
                 {'KD': np.array([label])}
             ]
+
         elif mode == 'class':
             if classes is not None:
                 class_array = classes
-            if classes is None:
+            elif classes is None:
                 class_array = np.linspace(min_v, max_v, n_classes + 1)
             else:
                 raise NotImplementedError
+
             one_hot = np.zeros(n_classes)
             for i in range(len(class_array) - 1):
                 if i == len(class_array) - 2:

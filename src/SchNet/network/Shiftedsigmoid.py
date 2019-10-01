@@ -1,11 +1,11 @@
-from src.SchNet.tools.preprocessing_schnet import preprocessing_schnet
+from src.SchNet.tools.PreprocessingSchnet import PreprocessingSchnet
 import numpy as np
 import torch
 
 
 class ShiftedSigmoid:
     def __init__(self):
-        labels = preprocessing_schnet.get_labels('../Data/train', '../Data/index/INDEX_refined_data.2016')
+        labels = PreprocessingSchnet.getLabels('../Data/train', '../Data/index/INDEX_refined_data.2016')
         self.maxv = np.max(labels)
         self.minv = np.min(labels)
     
