@@ -3,3 +3,6 @@
 
 # Data
 Data
+
+# Except build-folder after voxelisation
+scripts/CNN/build

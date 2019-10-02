@@ -21,6 +21,8 @@ class Training:
         else:
             self.optimizer = optimizer
 
+        self.bestModel = self.model
+
     def training(self, epoch, train_dataloader, dataset):
         self.model.train()
         mse_list = []
@@ -74,33 +76,37 @@ class Training:
                                                                                           dataset.__len__()))
         return np.mean(mse_list), np.mean(rmse_list)
 
-    def benchmark(self, datapath='../Data/test.hdf5', nData = 290):
-        rot = rotations()
+    def benchmark(self, datapath='../Data/test.hdf5', nData=290):
+        rot = Rotations()
         datafile = datapath
         labels = []
         outs = []
+
         for i in range(nData):
             outs1 = []
             target1 = []
+
             for j in range(24):
                 with h5py.File(datafile, 'r') as file:
                     data = rot.rotation(data=file[str(i) + '/data'][()][0], k=j)
                     label = -np.log10(np.exp(-(file[str(i) + '/label'][()])))
                 data = torch.from_numpy(data.reshape(1, 16, 24, 24, 24).copy()).float().cuda()
-                out = self.model(data)
+                out = self.bestModel(data)
                 outs1.append(out.cpu().data.numpy())
                 target1.append(label)
+
             labels.append(np.mean(target1))
             outs.append(np.mean(outs1))
+
         error = []
         for i in range(290):
-            error.append((outs[i]-labels[i])**2)
-        print("testmean: ", np.mean(error), np.sqrt(np.mean(error)))
+            error.append((outs[i] - labels[i]) ** 2)
+        print("testmean: ", np.mean(error))
 
         return error, labels, outs
 
     def fit(self, epochs, train_path, result_datapath, kwargs=None, n_datapoints=3767, prct_train=0.8,
-                 batch_size_train=128, batch_size_test=32):
+            batch_size_train=128, batch_size_test=32):
         lowest_loss = np.inf
         train_mse = []
         test_mse = []
@@ -131,6 +137,7 @@ class Training:
             if test_rmse[-1] < lowest_loss:
                 lowest_loss = test_rmse[-1]
                 torch.save(self.model.state_dict(), result_datapath + 'bestModel.pt')
+                self.bestModel = self.model
             torch.save(self.model, result_datapath + 'lastModel.pt')
             torch.save({'epoch': epoch, 'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': self.optimizer.state_dict()}, result_datapath + 'lastModel.tar')

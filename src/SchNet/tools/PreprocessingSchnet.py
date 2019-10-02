@@ -99,7 +99,8 @@ class PreprocessingSchnet:
     def createDatabase(database, threshold=20, data_path='../Data/train/',
                        index_path='../Data/index/INDEX_refined_data.2016',
                        ligand_end='_ligand.sdf', alt_ligand_end='_ligand.pdb', prot_end='_pocket.pdb', mode=None,
-                       label_type=None, classes=None, n_classes=None, oversample=False, sample_factor=50):
+                       label_type=None, classes=None, n_classes=None, oversample=False, sample_factor=50,
+                       pbc=(1, 1, 1)):
 
         ligandPaths = PreprocessingSchnet.getAllMolPaths(data_path, ligand_end)
         ligandPaths2 = PreprocessingSchnet.getAllMolPaths(data_path, alt_ligand_end)
@@ -133,7 +134,7 @@ class PreprocessingSchnet:
                     continue
 
             affi = PreprocessingSchnet.classLabel(labels[i], mode, label_type, classes=classes, n_classes=n_classes,
-                                                min_v=np.min(labels), max_v=np.max(labels))
+                                                  min_v=np.min(labels), max_v=np.max(labels))
 
             mean = np.array([x, y, z])
 
@@ -144,7 +145,7 @@ class PreprocessingSchnet:
                 if dist <= threshold:
                     atom_list.append(at)
 
-            complexe = [ase.Atoms(atom_list, pbc=(1, 1, 1))]
+            complexe = [ase.Atoms(atom_list, pbc=pbc)]
 
             if not oversample:
                 database.add_systems(complexe, affi)
