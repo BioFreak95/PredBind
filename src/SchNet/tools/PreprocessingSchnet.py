@@ -3,6 +3,7 @@ import csv
 import numpy as np
 from ase.io import read
 import ase
+import h5py
 
 
 class PreprocessingSchnet:
@@ -210,3 +211,81 @@ class PreprocessingSchnet:
         else:
             raise NotImplementedError
         return affi
+
+    @staticmethod
+    def createDatabaseFromFeatureset(database, featureFile, length, threshold=20, mode=None,
+                                     label_type=None, classes=None, n_classes=None, oversample=False, sample_factor=50,
+                                     pbc=(1, 1, 1)):
+
+        featureFile = h5py.File(featureFile)
+
+        indexes = np.arange(length)
+        np.random.shuffle(indexes)
+
+        labels = []
+        for i in indexes:
+            labels.append(featureFile[str(i) + '/label'].value)
+
+        hist = np.histogram(labels, 25)
+
+        for i in indexes:
+            print(i)
+            # Add Ligand
+            atom_list = []
+            property_list = []
+            ligcoords = featureFile[str(i) + '/ligcoords'].value
+            ligAtNum = featureFile[str(i) + '/lignum'].value
+            ligFeatures = featureFile[str(i) + '/lig'].value
+            x = ligcoords[:, 0].mean()
+            y = ligcoords[:, 1].mean()
+            z = ligcoords[:, 2].mean()
+            mean = np.array([x, y, z])
+            for j in range(len(ligcoords)):
+                atom_list.append(ase.Atom(ligAtNum[j], ligcoords[j]))
+                property_list.append(ligFeatures[j])
+
+            #Add Protein-Atoms in Cutoff-Range
+            protcoords = featureFile[str(i) + '/protcoords'].value
+            protAtNum = featureFile[str(i) + '/protnum'].value
+            protFeatures = featureFile[str(i) + '/prot'].value
+
+            for j in range(len(protcoords)):
+                dist = np.linalg.norm(protcoords[j] - mean)
+                if dist <= threshold:
+                    atom_list.append(ase.Atom(protAtNum[j], protcoords[j]))
+                    property_list.append(protFeatures[j])
+
+            # Create Complex
+            complexe = [ase.Atoms(atom_list, pbc=pbc)]
+
+            label = featureFile[str(i) + '/label'].value
+
+            affi = PreprocessingSchnet.classLabel(label, mode, label_type, classes=classes, n_classes=n_classes,
+                                                  min_v=np.min(labels), max_v=np.max(labels))
+            affi[0]['props'] = np.array(property_list)
+
+            if not oversample:
+                database.add_systems(complexe, affi)
+            else:
+                classn = np.zeros(25)
+                for j in range(len(hist[1]) - 1):
+                    if j == len(hist[1]) - 2:
+                        if hist[1][j] <= labels[i] <= hist[1][j + 1]:
+                            classn[j] = 1
+                    else:
+                        if hist[1][j] <= labels[i] < hist[1][j + 1]:
+                            classn[j] = 1
+
+                if np.unique(classn, return_counts=True)[1][1] != 1:
+                    print('warning -> Onehot is more than one')
+                    print(classn)
+
+                ind = np.argmax(classn)
+                if hist[0][ind] == 0:
+                    print('Warning -> zero-sample')
+                    continue
+
+                n_sampling = int(np.ceil((1 / hist[0][ind]) * sample_factor * 25))
+                print(i, len(indexes), n_sampling, ind)
+                for _ in range(n_sampling):
+                    database.add_systems(complexe, affi)
