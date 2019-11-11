@@ -66,27 +66,41 @@ class Training:
         preds = torch.tensor(torch.mean(preds))
         return preds
 
-    def testing(self, epoch, test_dataloader, dataset, ensemble=False, remember=10):
+    def testing(self, epoch, test_dataloader, dataset, ensemble=False, remember=10, rotation=True):
         self.model.eval()
         mse_list = []
         rmse_list = []
         batchnum = 0
         batch_losses = []
+        criterion = torch.nn.MSELoss()
+        if rotation:
+            rot = Rotations()
 
         for batch_id, (data, target) in enumerate(test_dataloader):
             target = target.view(-1, 1)
             data = data.float().cuda()
-            target = target.float().cuda()
-            out = self.model(data)
+            target = target.float()
+            if rotation:
+                outs = []
+                datatemp = data.cpu().numpy()[0]
+                for j in range(24):
+                    newdat = rot.rotation(datatemp, j).copy()
+                    newdat = torch.from_numpy(newdat).float().cuda().view((1, 16, 24, 24, 24))
+                    outs.append(self.model(newdat))
+                    out = torch.tensor([[torch.mean(torch.tensor(outs))]])
+            else:
+                out = self.model(data)
             if ensemble:
                 pred = out
                 if epoch == 0:
                     prediction = pred
                 else:
                     prediction = self.calcPred(pred, remember=remember, batchnum=batchnum)
-            batch_losses.append(prediction)
+                batch_losses.append(prediction)
+            else:
+                prediction = out
             batchnum += 1
-            criterion = torch.nn.MSELoss()
+
             loss = criterion(prediction, target)
             mse_list.append(loss.data.item())
             rmse_list.append(np.sqrt(loss.data.item()))
@@ -96,10 +110,11 @@ class Training:
                        100. * (batch_id * len(data)) / dataset.__len__(), loss.data.item(), np.mean(mse_list),
                 np.mean(rmse_list)))
 
-        self.epochLosses.append(batch_losses)
+        if ensemble:
+            self.epochLosses.append(batch_losses)
         print('Test Epoch: {} MSE (loss): {:.4f}, RMSE: {:.4f} Dataset length {}'.format(epoch, np.mean(mse_list),
-                                                                                          np.mean(rmse_list),
-                                                                                          dataset.__len__()))
+                                                                                         np.mean(rmse_list),
+                                                                                         dataset.__len__()))
         return np.mean(mse_list), np.mean(rmse_list)
 
     def benchmark(self, n_datapoints, datapath, rotations=True, model=None, ensemble=False):
@@ -169,7 +184,8 @@ class Training:
                 if ensemble:
                     outall = []
                     for m in best_models:
-                        outall.append(m(data))
+                        out = m(data)
+                        outall.append(out)
                     out = torch.mean(torch.tensor(outall))
                 else:
                     out = self.bestModel(data)
@@ -184,7 +200,7 @@ class Training:
             return error, target1, outs1
 
     def fit(self, epochs, train_path, result_datapath, kwargs=None, n_datapoints=3767, prct_train=0.8,
-            batch_size_train=128, batch_size_test=32, ensemble=False, remember=10, augmentation=True):
+            batch_size_train=64, batch_size_test=32, ensemble=False, remember=10, augmentation=True):
         lowest_loss = np.inf
         train_mse = []
         test_mse = []
@@ -199,7 +215,7 @@ class Training:
         train, test = torch.utils.data.random_split(indices, [train_size, test_size])
 
         train_set = OwnDataset(train, train_path, rotations=augmentation)
-        test_set = OwnDataset(test, train_path, rotations=augmentation)
+        test_set = OwnDataset(test, train_path, rotations=False)
         train_dataloader = DataLoader(dataset=train_set, batch_size=batch_size_train, shuffle=True, **kwargs)
         if ensemble:
             test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
