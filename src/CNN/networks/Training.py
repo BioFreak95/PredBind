@@ -66,15 +66,39 @@ class Training:
             mse_list.append(loss.data.item())
             rmse_list.append(np.sqrt(loss.data.item()))
 
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} MSE-Mean: {:.6f} RMSE-Mean:  {:.6f}'.format(
+            print('Test Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} MSE-Mean: {:.6f} RMSE-Mean:  {:.6f}'.format(
                 epoch, batch_id * len(data), dataset.__len__(),
                        100. * (batch_id * len(data)) / dataset.__len__(), loss.data.item(), np.mean(mse_list),
                 np.mean(rmse_list)))
 
-        print('Train Epoch: {} MSE (loss): {:.4f}, RMSE: {:.4f} Dataset length {}'.format(epoch, np.mean(mse_list),
+        print('Test Epoch: {} MSE (loss): {:.4f}, RMSE: {:.4f} Dataset length {}'.format(epoch, np.mean(mse_list),
                                                                                           np.mean(rmse_list),
                                                                                           dataset.__len__()))
         return np.mean(mse_list), np.mean(rmse_list)
+
+    def benchmark2(self, n_datapoints, datapath, path='Data/results/bestModel.pt'):
+        kwargs = {'num_workers': 4}
+        indices = np.arange(n_datapoints)
+        test_set = OwnDataset(indices, datapath)
+        test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
+        self.model.load_state_dict(torch.load(path))
+        self.model.eval()
+        outs1 = []
+        target1 = []
+
+        for batch_id, (data, target) in enumerate(test_dataloader):
+            target = target.view(-1, 1)
+            target1.append(target.cpu().data.numpy())
+            data = data.float().cuda()
+            out = self.model(data)
+            outs1.append(out.cpu().data.numpy())
+        error = []
+        for i in range(290):
+            error.append((outs1[i] - target1[i]) ** 2)
+        print(outs1, target1)
+        print("testmean: ", np.mean(error))
+
+        return error, target1, outs1
 
     def benchmark(self, datapath='../Data/test.hdf5', nData=290):
         rot = Rotations()
