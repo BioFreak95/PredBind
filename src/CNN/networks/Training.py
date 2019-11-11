@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 import numpy as np
 import h5py
+import os
 
 
 class Training:
@@ -22,6 +23,7 @@ class Training:
             self.optimizer = optimizer
 
         self.bestModel = self.model
+        self.epochLosses = []
 
     def training(self, epoch, train_dataloader, dataset):
         self.model.train()
@@ -51,18 +53,41 @@ class Training:
                                                                                           dataset.__len__()))
         return np.mean(mse_list), np.mean(rmse_list)
 
-    def testing(self, epoch, test_dataloader, dataset):
+    def calcPred(self, prediction, remember, batchnum):
+        preds = []
+        preds.append(prediction)
+        lene = len(self.epochLosses)
+        if lene < remember:
+            lene2 = -1
+        else:
+            lene2 = lene - remember
+        for i in range(lene - 1, lene2, -1):
+            preds.append(self.epochLosses[i][batchnum])
+        preds = torch.tensor(torch.mean(preds))
+        return preds
+
+    def testing(self, epoch, test_dataloader, dataset, ensemble=False, remember=10):
         self.model.eval()
         mse_list = []
         rmse_list = []
+        batchnum = 0
+        batch_losses = []
 
         for batch_id, (data, target) in enumerate(test_dataloader):
             target = target.view(-1, 1)
             data = data.float().cuda()
             target = target.float().cuda()
             out = self.model(data)
+            if ensemble:
+                pred = out
+                if epoch == 0:
+                    prediction = pred
+                else:
+                    prediction = self.calcPred(pred, remember=remember, batchnum=batchnum)
+            batch_losses.append(prediction)
+            batchnum += 1
             criterion = torch.nn.MSELoss()
-            loss = criterion(out, target)
+            loss = criterion(prediction, target)
             mse_list.append(loss.data.item())
             rmse_list.append(np.sqrt(loss.data.item()))
 
@@ -71,19 +96,28 @@ class Training:
                        100. * (batch_id * len(data)) / dataset.__len__(), loss.data.item(), np.mean(mse_list),
                 np.mean(rmse_list)))
 
+        self.epochLosses.append(batch_losses)
         print('Test Epoch: {} MSE (loss): {:.4f}, RMSE: {:.4f} Dataset length {}'.format(epoch, np.mean(mse_list),
                                                                                           np.mean(rmse_list),
                                                                                           dataset.__len__()))
         return np.mean(mse_list), np.mean(rmse_list)
 
-    def benchmark(self, n_datapoints, datapath, rotations=True, model=None):
+    def benchmark(self, n_datapoints, datapath, rotations=True, model=None, ensemble=False):
+        if ensemble:
+            best_models = []
+            for i in os.listdir(model):
+                if 'bestModel' in i:
+                    model.load_state_dict(torch.load(i))
+                    model.eval()
+                    best_models.append(model)
+
         if rotations:
             rot = Rotations()
             datafile = datapath
             labels = []
             outs = []
 
-            if model is not None:
+            if model is not None and not ensemble:
                 self.bestModel.load_state_dict(torch.load(model))
             self.bestModel.eval()
 
@@ -96,7 +130,13 @@ class Training:
                         data = rot.rotation(data=file[str(i) + '/data'][()][0], k=j)
                         label = -np.log10(np.exp(-(file[str(i) + '/label'][()])))
                     data = torch.from_numpy(data.reshape(1, 16, 24, 24, 24).copy()).float().cuda()
-                    out = self.bestModel(data)
+                    if ensemble:
+                        outall = []
+                        for m in best_models:
+                            outall.append(m(data))
+                        out = torch.mean(torch.tensor(outall))
+                    else:
+                        out = self.bestModel(data)
                     outs1.append(out.cpu().data.numpy())
                     target1.append(label)
 
@@ -115,7 +155,7 @@ class Training:
             test_set = OwnDataset(indices, datapath, rotations=False)
             test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
 
-            if model is not None:
+            if model is not None and not ensemble:
                 self.bestModel.load_state_dict(torch.load(model))
             self.bestModel.eval()
 
@@ -126,7 +166,13 @@ class Training:
                 target = target.view(-1, 1)
                 target1.append(target.cpu().data.numpy())
                 data = data.float().cuda()
-                out = self.model(data)
+                if ensemble:
+                    outall = []
+                    for m in best_models:
+                        outall.append(m(data))
+                    out = torch.mean(torch.tensor(outall))
+                else:
+                    out = self.bestModel(data)
                 outs1.append(out.cpu().data.numpy())
 
             error = []
@@ -138,7 +184,7 @@ class Training:
             return error, target1, outs1
 
     def fit(self, epochs, train_path, result_datapath, kwargs=None, n_datapoints=3767, prct_train=0.8,
-            batch_size_train=128, batch_size_test=32):
+            batch_size_train=128, batch_size_test=32, ensemble=False, remember=10):
         lowest_loss = np.inf
         train_mse = []
         test_mse = []
@@ -155,21 +201,36 @@ class Training:
         train_set = OwnDataset(train, train_path)
         test_set = OwnDataset(test, train_path)
         train_dataloader = DataLoader(dataset=train_set, batch_size=batch_size_train, shuffle=True, **kwargs)
-        test_dataloader = DataLoader(dataset=test_set, batch_size=batch_size_test, shuffle=False, **kwargs)
+        if ensemble:
+            test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
+        else:
+            test_dataloader = DataLoader(dataset=test_set, batch_size=batch_size_test, shuffle=False, **kwargs)
+
+        best_losses = []
 
         for epoch in range(epochs):
             mse, rmse = self.training(epoch, train_dataloader, train_set)
             train_mse.append(mse)
             train_rmse.append(rmse)
 
-            mse, rmse = self.testing(epoch, test_dataloader, test_set)
+            mse, rmse = self.testing(epoch, test_dataloader, test_set, ensemble, remember)
             test_mse.append(mse)
             test_rmse.append(rmse)
 
-            if test_rmse[-1] < lowest_loss:
-                lowest_loss = test_rmse[-1]
-                torch.save(self.model.state_dict(), result_datapath + 'bestModel.pt')
-                self.bestModel = self.model
+            if ensemble:
+                if len(best_losses) < remember:
+                    best_losses.append(test_mse[-1])
+                    torch.save(self.model, result_datapath + 'bestModel.pt' + str(len(best_losses)))
+                else:
+                    bad_loss = np.argmax(best_losses)
+                    if best_losses[bad_loss] > test_mse[-1]:
+                        best_losses[bad_loss] = test_mse[-1]
+                        torch.save(self.model, result_datapath + 'bestModel.pt' + str(bad_loss))
+            else:
+                if test_mse[-1][-1] < lowest_loss:
+                    lowest_loss = test_mse[-1][-1]
+                    torch.save(self.model.state_dict(), result_datapath + 'bestModel.pt')
+                    self.bestModel = self.model
             torch.save(self.model, result_datapath + 'lastModel.pt')
             torch.save({'epoch': epoch, 'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': self.optimizer.state_dict()}, result_datapath + 'lastModel.tar')
