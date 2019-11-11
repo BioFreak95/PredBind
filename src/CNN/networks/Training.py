@@ -76,58 +76,66 @@ class Training:
                                                                                           dataset.__len__()))
         return np.mean(mse_list), np.mean(rmse_list)
 
-    def benchmark2(self, n_datapoints, datapath, path='Data/results/bestModel.pt'):
-        kwargs = {'num_workers': 4}
-        indices = np.arange(n_datapoints)
-        test_set = OwnDataset(indices, datapath)
-        test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
-        self.model.load_state_dict(torch.load(path))
-        self.model.eval()
-        outs1 = []
-        target1 = []
+    def benchmark(self, n_datapoints, datapath, rotations=True, model=None):
+        if rotations:
+            rot = Rotations()
+            datafile = datapath
+            labels = []
+            outs = []
 
-        for batch_id, (data, target) in enumerate(test_dataloader):
-            target = target.view(-1, 1)
-            target1.append(target.cpu().data.numpy())
-            data = data.float().cuda()
-            out = self.model(data)
-            outs1.append(out.cpu().data.numpy())
-        error = []
-        for i in range(290):
-            error.append((outs1[i] - target1[i]) ** 2)
-        print(outs1, target1)
-        print("testmean: ", np.mean(error))
+            if model is not None:
+                self.bestModel.load_state_dict(torch.load(model))
+            self.bestModel.eval()
 
-        return error, target1, outs1
+            for i in range(n_datapoints):
+                outs1 = []
+                target1 = []
 
-    def benchmark(self, datapath='../Data/test.hdf5', nData=290):
-        rot = Rotations()
-        datafile = datapath
-        labels = []
-        outs = []
+                for j in range(24):
+                    with h5py.File(datafile, 'r') as file:
+                        data = rot.rotation(data=file[str(i) + '/data'][()][0], k=j)
+                        label = -np.log10(np.exp(-(file[str(i) + '/label'][()])))
+                    data = torch.from_numpy(data.reshape(1, 16, 24, 24, 24).copy()).float().cuda()
+                    out = self.bestModel(data)
+                    outs1.append(out.cpu().data.numpy())
+                    target1.append(label)
 
-        for i in range(nData):
+                labels.append(np.mean(target1))
+                outs.append(np.mean(outs1))
+
+            error = []
+            for i in range(290):
+                error.append((outs[i] - labels[i]) ** 2)
+            print("testmean: ", np.mean(error))
+
+            return error, labels, outs
+        else:
+            kwargs = {'num_workers': 4}
+            indices = np.arange(n_datapoints)
+            test_set = OwnDataset(indices, datapath, rotations=False)
+            test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
+
+            if model is not None:
+                self.bestModel.load_state_dict(torch.load(model))
+            self.bestModel.eval()
+
             outs1 = []
             target1 = []
 
-            for j in range(24):
-                with h5py.File(datafile, 'r') as file:
-                    data = rot.rotation(data=file[str(i) + '/data'][()][0], k=j)
-                    label = -np.log10(np.exp(-(file[str(i) + '/label'][()])))
-                data = torch.from_numpy(data.reshape(1, 16, 24, 24, 24).copy()).float().cuda()
-                out = self.bestModel(data)
+            for batch_id, (data, target) in enumerate(test_dataloader):
+                target = target.view(-1, 1)
+                target1.append(target.cpu().data.numpy())
+                data = data.float().cuda()
+                out = self.model(data)
                 outs1.append(out.cpu().data.numpy())
-                target1.append(label)
 
-            labels.append(np.mean(target1))
-            outs.append(np.mean(outs1))
+            error = []
+            for i in range(290):
+                error.append((outs1[i] - target1[i]) ** 2)
+            print(outs1, target1)
+            print("testmean: ", np.mean(error))
 
-        error = []
-        for i in range(290):
-            error.append((outs[i] - labels[i]) ** 2)
-        print("testmean: ", np.mean(error))
-
-        return error, labels, outs
+            return error, target1, outs1
 
     def fit(self, epochs, train_path, result_datapath, kwargs=None, n_datapoints=3767, prct_train=0.8,
             batch_size_train=128, batch_size_test=32):
