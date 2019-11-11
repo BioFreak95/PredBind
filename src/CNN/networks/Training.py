@@ -63,7 +63,9 @@ class Training:
             lene2 = lene - remember
         for i in range(lene - 1, lene2, -1):
             preds.append(self.epochLosses[i][batchnum])
-        preds = torch.tensor(torch.mean(preds))
+        print(preds)
+        preds = torch.tensor(torch.mean(torch.tensor(preds)))
+        print(preds)
         return preds
 
     def testing(self, epoch, test_dataloader, dataset, ensemble=False, remember=10, rotation=True):
@@ -236,12 +238,12 @@ class Training:
             if ensemble:
                 if len(best_losses) < remember:
                     best_losses.append(test_mse[-1])
-                    torch.save(self.model, result_datapath + 'bestModel.pt' + str(len(best_losses)))
+                    torch.save(self.model, result_datapath + 'bestModel' + str(len(best_losses)) + '.pt')
                 else:
                     bad_loss = np.argmax(best_losses)
                     if best_losses[bad_loss] > test_mse[-1]:
                         best_losses[bad_loss] = test_mse[-1]
-                        torch.save(self.model, result_datapath + 'bestmodels/' + 'bestModel.pt' + str(bad_loss))
+                        torch.save(self.model, result_datapath + 'bestmodels/' + 'bestModel' + str(bad_loss) + '.pt')
             else:
                 if test_mse[-1][-1] < lowest_loss:
                     lowest_loss = test_mse[-1][-1]
