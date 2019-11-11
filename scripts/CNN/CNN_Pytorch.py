@@ -7,11 +7,13 @@ import h5py
 print(torch.cuda.current_device())
 
 training = Training()
-training.fit(epochs=100, train_path='Data/train.hdf5', result_datapath='Data/results/', n_datapoints=3767)
+training.fit(epochs=100, train_path='Data/train.hdf5', result_datapath='Data/results/', n_datapoints=3767, ensemble=True,
+             remember=20, augmentation=True)
 
 # If you use the same paths as used in CNN_Preprocessing than you can use default values
 
-error, labels, outputs = training.benchmark2(datapath='Data/test.hdf5', n_datapoints=290)
+error, labels, outputs = training.benchmark(datapath='Data/test.hdf5', n_datapoints=290, ensemble=True,
+                                            model='Data/results/bestmodels/', rotations=True)
 
 file = h5py.File('Data/results/Bench.hdf5')
 file['squaredErrors'] = error

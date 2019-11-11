@@ -184,7 +184,7 @@ class Training:
             return error, target1, outs1
 
     def fit(self, epochs, train_path, result_datapath, kwargs=None, n_datapoints=3767, prct_train=0.8,
-            batch_size_train=128, batch_size_test=32, ensemble=False, remember=10):
+            batch_size_train=128, batch_size_test=32, ensemble=False, remember=10, augmentation=True):
         lowest_loss = np.inf
         train_mse = []
         test_mse = []
@@ -198,8 +198,8 @@ class Training:
         test_size = n_datapoints - train_size
         train, test = torch.utils.data.random_split(indices, [train_size, test_size])
 
-        train_set = OwnDataset(train, train_path)
-        test_set = OwnDataset(test, train_path)
+        train_set = OwnDataset(train, train_path, rotations=augmentation)
+        test_set = OwnDataset(test, train_path, rotations=augmentation)
         train_dataloader = DataLoader(dataset=train_set, batch_size=batch_size_train, shuffle=True, **kwargs)
         if ensemble:
             test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
@@ -225,11 +225,11 @@ class Training:
                     bad_loss = np.argmax(best_losses)
                     if best_losses[bad_loss] > test_mse[-1]:
                         best_losses[bad_loss] = test_mse[-1]
-                        torch.save(self.model, result_datapath + 'bestModel.pt' + str(bad_loss))
+                        torch.save(self.model, result_datapath + 'bestmodels/' + 'bestModel.pt' + str(bad_loss))
             else:
                 if test_mse[-1][-1] < lowest_loss:
                     lowest_loss = test_mse[-1][-1]
-                    torch.save(self.model.state_dict(), result_datapath + 'bestModel.pt')
+                    torch.save(self.model.state_dict(), result_datapath + 'bestmodels/' + 'bestModel.pt')
                     self.bestModel = self.model
             torch.save(self.model, result_datapath + 'lastModel.pt')
             torch.save({'epoch': epoch, 'model_state_dict': self.model.state_dict(),
