@@ -215,7 +215,7 @@ class PreprocessingSchnet:
     @staticmethod
     def createDatabaseFromFeatureset(database, featureFile, length, threshold=20, mode=None,
                                      label_type=None, classes=None, n_classes=None, oversample=False, sample_factor=50,
-                                     pbc=(1, 1, 1)):
+                                     pbc=(1, 1, 1), noProtons=False):
 
         featureFile = h5py.File(featureFile)
 
@@ -234,26 +234,36 @@ class PreprocessingSchnet:
             atom_list = []
             property_list = []
             ligcoords = featureFile[str(i) + '/ligcoords'].value
-            ligAtNum = featureFile[str(i) + '/lignum'].value
+            ligAtNum = np.char.decode(featureFile[str(i) + '/lignum'].value)
             ligFeatures = featureFile[str(i) + '/lig'].value
             x = ligcoords[:, 0].mean()
             y = ligcoords[:, 1].mean()
             z = ligcoords[:, 2].mean()
             mean = np.array([x, y, z])
             for j in range(len(ligcoords)):
-                atom_list.append(ase.Atom(ligAtNum[j], ligcoords[j]))
-                property_list.append(ligFeatures[j])
+                if noProtons:
+                    if ligAtNum[j] != 'H':
+                        atom_list.append(ase.Atom(ligAtNum[j], ligcoords[j]))
+                        property_list.append(ligFeatures[j])
+                else:
+                    atom_list.append(ase.Atom(ligAtNum[j], ligcoords[j]))
+                    property_list.append(ligFeatures[j])
 
             #Add Protein-Atoms in Cutoff-Range
             protcoords = featureFile[str(i) + '/protcoords'].value
-            protAtNum = featureFile[str(i) + '/protnum'].value
+            protAtNum = np.char.decode(featureFile[str(i) + '/protnum'].value)
             protFeatures = featureFile[str(i) + '/prot'].value
 
             for j in range(len(protcoords)):
                 dist = np.linalg.norm(protcoords[j] - mean)
                 if dist <= threshold:
-                    atom_list.append(ase.Atom(protAtNum[j], protcoords[j]))
-                    property_list.append(protFeatures[j])
+                    if noProtons:
+                        if protAtNum[j] != 'H':
+                            atom_list.append(ase.Atom(protAtNum[j], protcoords[j]))
+                            property_list.append(protFeatures[j])
+                    else:
+                        atom_list.append(ase.Atom(protAtNum[j], protcoords[j]))
+                        property_list.append(protFeatures[j])
 
             # Create Complex
             complexe = [ase.Atoms(atom_list, pbc=pbc)]
