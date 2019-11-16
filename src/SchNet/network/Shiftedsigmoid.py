@@ -1,4 +1,4 @@
-from src.SchNet.tools.PreprocessingSchnet import PreprocessingSchnet
+from ..tools.PreprocessingSchnet import PreprocessingSchnet
 import numpy as np
 import torch
 

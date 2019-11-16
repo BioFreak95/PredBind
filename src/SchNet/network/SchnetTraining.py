@@ -1,5 +1,6 @@
 # Import Area
 import sys
+import datetime
 
 sys.path.append('/home/max/Dokumente/Masterarbeit/PredBind')
 
@@ -12,8 +13,8 @@ from scipy.stats import spearmanr
 from scipy.stats import pearsonr
 import pandas
 import sys
-from src.SchNet.tools.PreprocessingSchnet import PreprocessingSchnet
-from src.SchNet.network.Shiftedsigmoid import ShiftedSigmoid
+from ..tools.PreprocessingSchnet import PreprocessingSchnet
+from ..network.Shiftedsigmoid import ShiftedSigmoid
 
 import torch.nn.functional as F
 import torch
@@ -26,7 +27,7 @@ class SchnetTraining:
               traindata='../../Data/combined1618/', benchdata='../../Data/test/',
               indexpath='../../Data/INDEX_refined_data.2016.2018',
               properties=['KD'], threshold=10, cutoff=8, numVal=150, featureset=False,
-              trainBatchsize=8, testBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290, use_noise=False,
+              trainBatchsize=8, valBatchsize=1, benchBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290, use_noise=False,
               noise_mean=0.0, noise_std=0.1, chargeEmbedding=True,
               ownFeatures=False, nFeatures=8, finalFeature=None,
               max_z=200, n_atom_basis=20, n_filters=32,
@@ -37,28 +38,33 @@ class SchnetTraining:
               cutoff_network=schnetpack.nn.cutoff.CosineCutoff, outputIn=32, outAggregation='avg', outLayer=2,
               outMode='postaggregate', outAct=schnetpack.nn.activations.shifted_softplus, outOutAct=None, n_acc_steps=8,
               remember=10,
-              ensembleModel=False, n_epochs=150, lr=1e-3, weight_decay=0):
+              ensembleModel=False, n_epochs=150, lr=1e-3, weight_decay=0, train_loader=None, val_loader=None, splitfile=None):
 
         print('Device: ', torch.cuda.current_device())
         torch.cuda.empty_cache()
 
         # Define Folder for Results
         Resultfolder = resultfolder
-        act = ShiftedSigmoid()
+        #act = ShiftedSigmoid()
+        if train_loader is None or val_loader is None:
+            f = open("log.txt", "a")
+            f.writelines(str(datetime.datetime.now()) + ' '  + Resultfolder + ' create loader by its own' + '\n')
+            f.close()
 
-        train_loader, val_loader, train, bench = self.createDataloader(traindb=traindb,
-                                                                       benchdb=benchdb,
-                                                                       traindata=traindata,
-                                                                       benchdata=benchdata,
-                                                                       indexpath=indexpath,
-                                                                       properties=properties, threshold=threshold,
-                                                                       cutoff=cutoff,
-                                                                       numVal=numVal,
-                                                                       featureset=featureset,
-                                                                       trainBatchsize=trainBatchsize,
-                                                                       testBatchsize=testBatchsize,
-                                                                       natoms=natoms, props=props,
-                                                                       ntrain=ntrain, ntest=ntest)
+            train_loader, val_loader, bench_loader = self.createDataloader(traindb=traindb,
+                                                                           benchdb=benchdb,
+                                                                           traindata=traindata,
+                                                                           benchdata=benchdata,
+                                                                           indexpath=indexpath,
+                                                                           properties=properties, threshold=threshold,
+                                                                           cutoff=cutoff,
+                                                                           numVal=numVal,
+                                                                           featureset=featureset,
+                                                                           trainBatchsize=trainBatchsize,
+                                                                           valBatchsize=valBatchsize,
+                                                                           benchBatchsize=benchBatchsize,
+                                                                           natoms=natoms, props=props,
+                                                                           ntrain=ntrain, ntest=ntest, splitfile=splitfile)
 
         model = schnetpack.representation.SchNet(use_noise=use_noise, noise_mean=noise_mean, noise_std=noise_std,
                                                  chargeEmbedding=chargeEmbedding,
@@ -107,8 +113,10 @@ class SchnetTraining:
                          traindata='../../Data/combined1618/', benchdata='../../Data/test/',
                          indexpath='../../Data/INDEX_refined_data.2016.2018',
                          properties=['KD'], threshold=10, cutoff=8, numVal=150, featureset=False,
-                         trainBatchsize=8, testBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290):
-
+                         trainBatchsize=8, valBatchsize=1, benchBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290, splitfile=None):
+        f = open("log.txt", "a")
+        f.writelines(str(datetime.datetime.now()) + ' call of createLoader' + '\n')
+        f.close()
         train = schnetpack.data.AtomsData(traindb,
                                           available_properties=properties,
                                           environment_provider=schnetpack.environment.TorchEnvironmentProvider(cutoff,
@@ -132,7 +140,7 @@ class SchnetTraining:
                                                                                                                    'cpu')))
 
         if featureset:
-            if len(train) == 0:
+            if len(bench) == 0:
                 PreprocessingSchnet.createDatabaseFromFeatureset(bench,
                                                                  threshold=threshold,
                                                                  featureFile=benchdata,
@@ -142,16 +150,17 @@ class SchnetTraining:
                 PreprocessingSchnet.createDatabase(bench, data_path=benchdata, threshold=threshold,
                                                    index_path=indexpath)
 
-        train, val, test = schnetpack.train_test_split(data=train, num_val=numVal, num_train=len(train) - numVal)
+        train, val, test = schnetpack.train_test_split(data=train, num_val=numVal, num_train=len(train) - numVal, split_file=splitfile, log='log.txt')
 
         print(len(train), len(bench), len(val))
 
         # Create Dataloader for Training
         train_loader = schnetpack.AtomsLoader(train, batch_size=trainBatchsize, shuffle=True, natoms=natoms,
                                               props=props)
-        val_loader = schnetpack.AtomsLoader(val, batch_size=testBatchsize, shuffle=False, natoms=natoms, props=props)
+        val_loader = schnetpack.AtomsLoader(val, batch_size=valBatchsize, shuffle=False, natoms=natoms, props=props)
+        bench_loader = schnetpack.AtomsLoader(bench, batch_size=benchBatchsize, shuffle=False, natoms=natoms, props=props)
 
-        return train_loader, val_loader, train, bench
+        return train_loader, val_loader, bench_loader
 
     @staticmethod
     def count_parameters(model):
@@ -180,31 +189,40 @@ class SchnetTraining:
                  traindata='../../Data/combined1618/', benchdata='../../Data/test/',
                  indexpath='../../Data/INDEX_refined_data.2016.2018',
                  properties=['KD'], threshold=10, cutoff=8, numVal=150, featureset=False,
-                 trainBatchsize=8, testBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290):
+                 trainBatchsize=8, valBatchsize=1, benchBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290, bench_loader=None, train_loader=None, train_length=None, bench_length=290, splitfile=None):
+        if train_loader is None or bench_loader is None:
+            f = open("log.txt", "a")
+            f.writelines(str(datetime.datetime.now()) + ': '  + project + ' create loader by its own in plotting' + '\n')
+            f.close()
 
-        train_loader, val_loader, train, bench = self.createDataloader(traindb=traindb,
-                                                                       benchdb=benchdb,
-                                                                       traindata=traindata,
-                                                                       benchdata=benchdata,
-                                                                       indexpath=indexpath,
-                                                                       properties=properties,
-                                                                       threshold=threshold,
-                                                                       cutoff=cutoff,
-                                                                       numVal=numVal,
-                                                                       featureset=featureset,
-                                                                       trainBatchsize=trainBatchsize,
-                                                                       testBatchsize=testBatchsize,
-                                                                       natoms=natoms, props=props,
-                                                                       ntrain=ntrain, ntest=ntest)
+            train_loader, val_loader, bench_loader = self.createDataloader(traindb=traindb,
+                                                                           benchdb=benchdb,
+                                                                           traindata=traindata,
+                                                                           benchdata=benchdata,
+                                                                           indexpath=indexpath,
+                                                                           properties=properties,
+                                                                           threshold=threshold,
+                                                                           cutoff=cutoff,
+                                                                           numVal=numVal,
+                                                                           featureset=featureset,
+                                                                           trainBatchsize=trainBatchsize,
+                                                                           valBatchsize=valBatchsize,
+                                                                           benchBatchsize=benchBatchsize,
+                                                                           natoms=natoms, props=props,
+                                                                           ntrain=ntrain, ntest=ntest, splitfile=splitfile)
 
-        length1 = len(train)
-        length2 = len(bench)
+        #val_loader = schnetpack.AtomsLoader(bench, batch_size=testBatchsize, shuffle=False, natoms=natoms, props=props)
+        if train_length is None:
+            length1 = int(ntrain - numVal)
+        else:
+            length1 = train_length
+        length2 = bench_length
 
         torch.nn.Module.dump_patches = True
         best_model = torch.load(project + '/best_model')
         preds = []
         targets = []
-        for count, batch in enumerate(val_loader):
+        for count, batch in enumerate(bench_loader):
             # move batch to GPU, if necessary
             batch = {k: v.to('cuda') for k, v in batch.items()}
             # apply model
