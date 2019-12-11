@@ -193,7 +193,7 @@ class SchnetTraining:
                  indexpath='../../Data/INDEX_refined_data.2016.2018',
                  properties=['KD'], threshold=10, cutoff=8, numVal=150, featureset=False,
                  trainBatchsize=8, valBatchsize=1, benchBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290, bench_loader=None, train_loader=None, 
-                 train_length=None, bench_length=290, splitfile=None, noProtons=False):
+                 train_length=None, bench_length=290, splitfile=None, noProtons=False, ensembleModel=False):
         if train_loader is None or bench_loader is None:
             f = open("log.txt", "a")
             f.writelines(str(datetime.datetime.now()) + ': '  + project + ' create loader by its own in plotting' + '\n')
@@ -216,7 +216,6 @@ class SchnetTraining:
                                                                            ntrain=ntrain, ntest=ntest, splitfile=splitfile, noProtons=noProtons)
 
         #val_loader = schnetpack.AtomsLoader(bench, batch_size=testBatchsize, shuffle=False, natoms=natoms, props=props)
-        '''
         if train_length is None:
             length1 = int(ntrain - numVal)
         else:
@@ -224,17 +223,33 @@ class SchnetTraining:
         length2 = bench_length
 
         torch.nn.Module.dump_patches = True
-        best_model = torch.load(project + '/best_model')
-        best_model.eval()
+        if ensembleModel:
+            best_models = []
+            for i in os.listdir(model):
+                if 'bestModel' in i:
+                    self.model = torch.load(model+i)
+                    self.model.eval()
+                    best_models.append(self.model)
+        else:
+            best_model = torch.load(project + '/best_model')
+            best_model.eval()
         preds = []
         targets = []
         for count, batch in enumerate(bench_loader):
             # move batch to GPU, if necessary
             batch = {k: v.to('cuda') for k, v in batch.items()}
             # apply model
-            pred = best_model(batch)
+            if ensembleModel:
+                predictions = []
+                for model in best_models:
+                    pred = model(batch)
+                    predictions.append(pred['y'].detach().cpu().numpy())
+                preds.append(np.mean(predictions))
+            else:
+                pred = best_model(batch)
+                preds.append(pred['y'].detach().cpu().numpy())
             targets.append(batch['KD'].detach().cpu().numpy())
-            preds.append(pred['y'].detach().cpu().numpy())
+
 
         targets_new = []
         preds_new = []
@@ -289,7 +304,6 @@ class SchnetTraining:
         plt.text(1, -1.2, txt)
         plt.savefig(project + '/' + name + '_output.png', bbox_inches='tight')
         plt.clf()
-        '''
         loss = pandas.read_csv(project + '/log.csv')['Train loss'].to_numpy()
         val_loss = pandas.read_csv(project + '/log.csv')['Validation loss'].to_numpy()
         lr = pandas.read_csv(project + '/log.csv')['Learning rate'].to_numpy()
@@ -315,7 +329,6 @@ class SchnetTraining:
         # plt.title('Learning Rate')
         plt.savefig(project + '/' + name + '_lr.png', bbox_inches='tight')
         plt.clf()
-        '''
         targets = []
         preds = []
         for count, batch in enumerate(train_loader):
@@ -380,4 +393,3 @@ class SchnetTraining:
         plt.text(1, -1.2, txt)
         plt.savefig(project + '/' + name + '_outputTrain.png', bbox_inches='tight')
         plt.clf()
-        '''
