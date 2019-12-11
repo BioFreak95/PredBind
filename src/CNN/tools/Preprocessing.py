@@ -120,7 +120,7 @@ class Preprocessing:
                 except:
                     try:
                         prot = Molecule(protPath)
-                        if prot.numAtoms > 50000:
+                        if prot.numAtoms > 30000:
                             factorx = self.boxsize[0] * 2.5
                             factory = self.boxsize[1] * 2.5
                             factorz = self.boxsize[2] * 2.5
@@ -209,8 +209,9 @@ class Preprocessing:
         return k
 
     @staticmethod
-    def getLabels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016'):
-        complexnames = Preprocessing.getComplexDirNames(complex_data_path)
+    def getLabels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016', complexnames=None):
+        if complexnames is None:
+            complexnames = Preprocessing.getComplexDirNames(complex_data_path)
         with open(index_path) as f:
             reader = csv.reader(f, delimiter='\t')
             data = [(col1)
@@ -233,8 +234,9 @@ class Preprocessing:
         return data_path + complex_name + '/' + complex_name + namespace
 
     @staticmethod
-    def getAllMolPaths(data_path, namespace):
-        complexes = Preprocessing.getComplexDirNames(data_path)
+    def getAllMolPaths(data_path, namespace, complexes=None):
+        if complexes is None:
+            complexes = Preprocessing.getComplexDirNames(data_path)
         ligands = []
         for i in range(len(complexes)):
             ligands.append(Preprocessing.getMolPath(data_path, complexes[i], namespace))
@@ -250,12 +252,13 @@ class Preprocessing:
         return dataset
 
     def createVoxelisedFile(self, datapath, savepointnum, protNamespace, altProNamespace, altLigNamespace, ligNamespace,
-                            namespace='../Data/HDF5/data', startpoint=0):
+                            namespace='../Data/HDF5/data', startpoint=0, complexes=None):
         j = 0
-        protPaths, c = Preprocessing.getAllMolPaths(datapath, protNamespace)
-        altprotPaths, c = Preprocessing.getAllMolPaths(datapath, altProNamespace)
-        ligPaths, c = Preprocessing.getAllMolPaths(datapath, ligNamespace)
-        altLigPaths, c = Preprocessing.getAllMolPaths(datapath, altLigNamespace)
+        print(complexes)
+        protPaths, c = Preprocessing.getAllMolPaths(datapath, protNamespace, complexes=complexes)
+        altprotPaths, c = Preprocessing.getAllMolPaths(datapath, altProNamespace, complexes=complexes)
+        ligPaths, c = Preprocessing.getAllMolPaths(datapath, ligNamespace, complexes=complexes)
+        altLigPaths, c = Preprocessing.getAllMolPaths(datapath, altLigNamespace, complexes=complexes)
         file = h5py.File(namespace + "{0:0=5d}".format(0) + '.hdf5')
         for i in range(startpoint, len(ligPaths)):
             if (i % savepointnum == 0):

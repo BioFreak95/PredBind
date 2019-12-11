@@ -18,7 +18,7 @@ class Training:
             self.model = model
 
         if optimizer is None:
-            self.optimizer = torch.optim.Adam(self.model.parameters(), betas=(0.99, 0.999), lr=1e-4)
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4, weight_decay=1e-5)
         else:
             self.optimizer = optimizer
 
@@ -89,7 +89,7 @@ class Training:
                     newdat = rot.rotation(datatemp, j).copy()
                     newdat = torch.from_numpy(newdat).float().cuda().view((1, 16, 24, 24, 24))
                     outs.append(self.model(newdat))
-                    out = torch.tensor([[torch.mean(torch.tensor(outs))]])
+                out = torch.tensor([[torch.mean(torch.tensor(outs))]])
             else:
                 out = self.model(data)
             if ensemble:
@@ -98,8 +98,7 @@ class Training:
                     prediction = pred
                 else:
                     prediction = self.calcPred(pred, remember=remember, batchnum=batchnum)
-                batch_losses.append(prediction)
-            else:
+                batch_losses.append(out)
                 prediction = out
             batchnum += 1
 
@@ -124,9 +123,9 @@ class Training:
             best_models = []
             for i in os.listdir(model):
                 if 'bestModel' in i:
-                    model.load_state_dict(torch.load(i))
-                    model.eval()
-                    best_models.append(model)
+                    self.model = torch.load(model+i)
+                    self.model.eval()
+                    best_models.append(self.model)
 
         if rotations:
             rot = Rotations()
@@ -135,8 +134,8 @@ class Training:
             outs = []
 
             if model is not None and not ensemble:
-                self.bestModel.load_state_dict(torch.load(model))
-            self.bestModel.eval()
+                self.bestModel.load_state_dict(torch.load(model + 'bestModel.pt'))
+                self.bestModel.eval()
 
             for i in range(n_datapoints):
                 outs1 = []
@@ -173,7 +172,7 @@ class Training:
             test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
 
             if model is not None and not ensemble:
-                self.bestModel.load_state_dict(torch.load(model))
+                self.bestModel.load_state_dict(torch.load(model + 'bestModel.pt'))
             self.bestModel.eval()
 
             outs1 = []
@@ -201,8 +200,10 @@ class Training:
 
             return error, target1, outs1
 
-    def fit(self, epochs, train_path, result_datapath, kwargs=None, n_datapoints=3767, prct_train=0.8,
+    def fit(self, epochs, train_path, result_datapath, kwargs=None, n_datapoints=3767, prct_train=0.8, test_path=None, n_test=290,
             batch_size_train=64, batch_size_test=32, ensemble=False, remember=10, augmentation=True):
+        print(self.model)
+        print(Training.count_parameters(self.model))
         lowest_loss = np.inf
         train_mse = []
         test_mse = []
@@ -215,14 +216,18 @@ class Training:
         train_size = int(prct_train * n_datapoints)
         test_size = n_datapoints - train_size
         train, test = torch.utils.data.random_split(indices, [train_size, test_size])
-
         train_set = OwnDataset(train, train_path, rotations=augmentation)
-        test_set = OwnDataset(test, train_path, rotations=False)
+
+        if test_path is None:
+            test_set = OwnDataset(test, train_path, rotations=False)
+        else:
+            test_set = OwnDataset(np.arange(n_test), test_path, rotations=False)
+
         train_dataloader = DataLoader(dataset=train_set, batch_size=batch_size_train, shuffle=True, **kwargs)
         if ensemble:
             test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
         else:
-            test_dataloader = DataLoader(dataset=test_set, batch_size=batch_size_test, shuffle=False, **kwargs)
+            test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
 
         best_losses = []
 
@@ -238,15 +243,15 @@ class Training:
             if ensemble:
                 if len(best_losses) < remember:
                     best_losses.append(test_mse[-1])
-                    torch.save(self.model, result_datapath + 'bestModel' + str(len(best_losses)) + '.pt')
+                    torch.save(self.model, result_datapath + 'bestmodels/' + 'bestModel' + str(len(best_losses)) + '.pt')
                 else:
                     bad_loss = np.argmax(best_losses)
                     if best_losses[bad_loss] > test_mse[-1]:
                         best_losses[bad_loss] = test_mse[-1]
                         torch.save(self.model, result_datapath + 'bestmodels/' + 'bestModel' + str(bad_loss) + '.pt')
             else:
-                if test_mse[-1][-1] < lowest_loss:
-                    lowest_loss = test_mse[-1][-1]
+                if test_mse[-1] < lowest_loss:
+                    lowest_loss = test_mse[-1]
                     torch.save(self.model.state_dict(), result_datapath + 'bestmodels/' + 'bestModel.pt')
                     self.bestModel = self.model
             torch.save(self.model, result_datapath + 'lastModel.pt')
@@ -259,3 +264,16 @@ class Training:
         hist.create_dataset('train_rmse', data=train_rmse)
         hist.create_dataset('test_rmse', data=test_rmse)
         hist.close()
+
+    @staticmethod
+    def count_parameters(model):
+        total_param = 0
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                num_param = np.prod(param.size())
+                if param.dim() > 1:
+                    print(name, ':', 'x'.join(str(x) for x in list(param.size())), '=', num_param)
+                else:
+                    print(name, ':', num_param)
+                total_param += num_param
+        return total_param

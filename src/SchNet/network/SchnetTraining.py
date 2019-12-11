@@ -132,7 +132,7 @@ class SchnetTraining:
                                                                                                                    'cpu')))
 
         if featureset:
-            if len(train) == 0:
+            if len(bench) == 0:
                 PreprocessingSchnet.createDatabaseFromFeatureset(bench,
                                                                  threshold=threshold,
                                                                  featureFile=benchdata,

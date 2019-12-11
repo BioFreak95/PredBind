@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from src.CNN.networks.layers.FireModule import FireModule
 
+# Structure of the CNN of the KDeep-paper
+# (Jose Jimenez, KDEEP: Protein–Ligand Absolute Binding Affinity Prediction via 3D-Convolutional Neural Networks)
 
 class CNN(torch.nn.Module):
 
