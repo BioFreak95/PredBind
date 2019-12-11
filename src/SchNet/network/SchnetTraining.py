@@ -18,7 +18,7 @@ from ..network.Shiftedsigmoid import ShiftedSigmoid
 
 import torch.nn.functional as F
 import torch
-from torch.optim import Adam
+from torch.optim import AdamW
 from torch.autograd import Variable
 
 
@@ -38,7 +38,8 @@ class SchnetTraining:
               cutoff_network=schnetpack.nn.cutoff.CosineCutoff, outputIn=32, outAggregation='avg', outLayer=2,
               outMode='postaggregate', outAct=schnetpack.nn.activations.shifted_softplus, outOutAct=None, n_acc_steps=8,
               remember=10,
-              ensembleModel=False, n_epochs=150, lr=1e-3, weight_decay=0, train_loader=None, val_loader=None, splitfile=None):
+              ensembleModel=False, n_epochs=150, lr=1e-3, weight_decay=0, train_loader=None, val_loader=None, splitfile=None,
+              noProtons=False):
 
         print('Device: ', torch.cuda.current_device())
         torch.cuda.empty_cache()
@@ -64,7 +65,8 @@ class SchnetTraining:
                                                                            valBatchsize=valBatchsize,
                                                                            benchBatchsize=benchBatchsize,
                                                                            natoms=natoms, props=props,
-                                                                           ntrain=ntrain, ntest=ntest, splitfile=splitfile)
+                                                                           ntrain=ntrain, ntest=ntest, splitfile=splitfile,
+                                                                           noProtons=noProtons)
 
         model = schnetpack.representation.SchNet(use_noise=use_noise, noise_mean=noise_mean, noise_std=noise_std,
                                                  chargeEmbedding=chargeEmbedding,
@@ -82,7 +84,7 @@ class SchnetTraining:
                                           mode=outMode, activation=outAct, output_activation=outOutAct)
 
         model = schnetpack.AtomisticModel(model, d)
-        optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
         print(model)
         print('number of trainable parameters =', SchnetTraining.count_parameters(model))
@@ -113,7 +115,8 @@ class SchnetTraining:
                          traindata='../../Data/combined1618/', benchdata='../../Data/test/',
                          indexpath='../../Data/INDEX_refined_data.2016.2018',
                          properties=['KD'], threshold=10, cutoff=8, numVal=150, featureset=False,
-                         trainBatchsize=8, valBatchsize=1, benchBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290, splitfile=None):
+                         trainBatchsize=8, valBatchsize=1, benchBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290, splitfile=None,
+                         noProtons=False):
         f = open("log.txt", "a")
         f.writelines(str(datetime.datetime.now()) + ' call of createLoader' + '\n')
         f.close()
@@ -127,7 +130,7 @@ class SchnetTraining:
             if len(train) == 0:
                 PreprocessingSchnet.createDatabaseFromFeatureset(train,
                                                                  threshold=threshold,
-                                                                 featureFile=traindata, length=ntrain)
+                                                                 featureFile=traindata, length=ntrain, noProtons=noProtons)
         else:
             if (len(train) == 0):
                 PreprocessingSchnet.createDatabase(train, threshold=threshold, data_path=traindata,
@@ -144,7 +147,7 @@ class SchnetTraining:
                 PreprocessingSchnet.createDatabaseFromFeatureset(bench,
                                                                  threshold=threshold,
                                                                  featureFile=benchdata,
-                                                                 length=ntest)
+                                                                 length=ntest, noProtons=noProtons)
         else:
             if (len(bench) == 0):
                 PreprocessingSchnet.createDatabase(bench, data_path=benchdata, threshold=threshold,
@@ -185,11 +188,12 @@ class SchnetTraining:
 
         return loss_fn
 
-    def plotting(self, project, traindb='Data/dataset_10_12_train_combined.db', benchdb='Data/dataset_10_12_test.db',
+    def plotting(self, project, name, traindb='Data/dataset_10_12_train_combined.db', benchdb='Data/dataset_10_12_test.db',
                  traindata='../../Data/combined1618/', benchdata='../../Data/test/',
                  indexpath='../../Data/INDEX_refined_data.2016.2018',
                  properties=['KD'], threshold=10, cutoff=8, numVal=150, featureset=False,
-                 trainBatchsize=8, valBatchsize=1, benchBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290, bench_loader=None, train_loader=None, train_length=None, bench_length=290, splitfile=None):
+                 trainBatchsize=8, valBatchsize=1, benchBatchsize=1, natoms=None, props=False, ntrain=4444, ntest=290, bench_loader=None, train_loader=None, 
+                 train_length=None, bench_length=290, splitfile=None, noProtons=False):
         if train_loader is None or bench_loader is None:
             f = open("log.txt", "a")
             f.writelines(str(datetime.datetime.now()) + ': '  + project + ' create loader by its own in plotting' + '\n')
@@ -209,9 +213,10 @@ class SchnetTraining:
                                                                            valBatchsize=valBatchsize,
                                                                            benchBatchsize=benchBatchsize,
                                                                            natoms=natoms, props=props,
-                                                                           ntrain=ntrain, ntest=ntest, splitfile=splitfile)
+                                                                           ntrain=ntrain, ntest=ntest, splitfile=splitfile, noProtons=noProtons)
 
         #val_loader = schnetpack.AtomsLoader(bench, batch_size=testBatchsize, shuffle=False, natoms=natoms, props=props)
+        '''
         if train_length is None:
             length1 = int(ntrain - numVal)
         else:
@@ -220,6 +225,7 @@ class SchnetTraining:
 
         torch.nn.Module.dump_patches = True
         best_model = torch.load(project + '/best_model')
+        best_model.eval()
         preds = []
         targets = []
         for count, batch in enumerate(bench_loader):
@@ -274,38 +280,42 @@ class SchnetTraining:
 
         plt.plot(x, y, 'yo', x, fit_fn(x), '--k')
 
-        plt.xlim(0, 13)
-        plt.ylim(2.5, 13)
-        plt.xlabel('Target')
-        plt.ylabel('Output of Network')
+        plt.xlim(1 , 13)
+        plt.ylim(1 , 13)
+        plt.xlabel('Target [pK]')
+        plt.ylabel('Prediction of the network[pK]')
         # plt.title('Output of Pytorch-trained Network for Benchmark-Set')
 
-        plt.text(0, 0, txt)
-        plt.savefig(project + '/output.png', bbox_inches='tight')
+        plt.text(1, -1.2, txt)
+        plt.savefig(project + '/' + name + '_output.png', bbox_inches='tight')
         plt.clf()
-
+        '''
         loss = pandas.read_csv(project + '/log.csv')['Train loss'].to_numpy()
         val_loss = pandas.read_csv(project + '/log.csv')['Validation loss'].to_numpy()
         lr = pandas.read_csv(project + '/log.csv')['Learning rate'].to_numpy()
 
-        plt.plot(val_loss, label="Validation Loss")
-        plt.plot(loss, label="Training Loss")
+        plt.plot(val_loss, label="Validation Loss", color='red')
+        plt.plot(loss, label="Training Loss", color='blue')
         plt.xlabel('Epoch')
         plt.ylabel('MSE')
         # plt.title('Train History')
         plt.legend()
-        # plt.xlim(20,50)
+        min_loss = np.min(val_loss)
+        plt.xlim(0, 100)
         plt.ylim(0, 6)
-        plt.savefig(project + '/training.png', bbox_inches='tight')
+        plt.yticks(np.arange(0,6,0.5))
+        plt.text(0, -1, 'Lowest validation loss: ' + str(np.round(min_loss, 4)))
+        plt.axhline(min_loss, color='grey', linestyle=':')
+        plt.savefig(project + '/' + name + '_training.png', bbox_inches='tight')
         plt.clf()
 
         plt.plot(lr)
         plt.xlabel('Epoch')
-        plt.ylabel('lr')
+        plt.ylabel('Learning rate')
         # plt.title('Learning Rate')
-        plt.savefig(project + '/lr.png', bbox_inches='tight')
+        plt.savefig(project + '/' + name + '_lr.png', bbox_inches='tight')
         plt.clf()
-
+        '''
         targets = []
         preds = []
         for count, batch in enumerate(train_loader):
@@ -361,12 +371,13 @@ class SchnetTraining:
 
         plt.plot(x, y, 'yo', x, fit_fn(x), '--k')
 
-        plt.xlim(0, 13)
-        plt.ylim(2.5, 13)
-        plt.xlabel('Target')
-        plt.ylabel('Output of Network')
+        plt.xlim(1, 13)
+        plt.ylim(1, 13)
+        plt.xlabel('Target [pK]')
+        plt.ylabel('Prediction of the network [pK]')
         # plt.title('Output of Pytorch-trained Network for Training-Set')
 
-        plt.text(0, 0, txt)
-        plt.savefig(project + '/outputTrain.png', bbox_inches='tight')
+        plt.text(1, -1.2, txt)
+        plt.savefig(project + '/' + name + '_outputTrain.png', bbox_inches='tight')
         plt.clf()
+        '''
