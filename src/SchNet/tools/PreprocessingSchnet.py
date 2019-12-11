@@ -227,7 +227,7 @@ class PreprocessingSchnet:
             labels.append(featureFile[str(i) + '/label'].value)
 
         hist = np.histogram(labels, 25)
-
+        maxdist = []
         for i in indexes:
             print(i)
             # Add Ligand
@@ -241,6 +241,7 @@ class PreprocessingSchnet:
             z = ligcoords[:, 2].mean()
             mean = np.array([x, y, z])
             for j in range(len(ligcoords)):
+                maxdist.append(np.linalg.norm(ligcoords[j] - mean))
                 if noProtons:
                     if ligAtNum[j] != 'H':
                         atom_list.append(ase.Atom(ligAtNum[j], ligcoords[j]))
@@ -299,3 +300,4 @@ class PreprocessingSchnet:
                 print(i, len(indexes), n_sampling, ind)
                 for _ in range(n_sampling):
                     database.add_systems(complexe, affi)
+        print(np.max(maxdist))
