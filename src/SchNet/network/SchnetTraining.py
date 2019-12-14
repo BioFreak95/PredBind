@@ -4,6 +4,7 @@ import datetime
 
 sys.path.append('/home/max/Dokumente/Masterarbeit/PredBind')
 
+import os
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -225,11 +226,12 @@ class SchnetTraining:
         torch.nn.Module.dump_patches = True
         if ensembleModel:
             best_models = []
-            for i in os.listdir(model):
-                if 'bestModel' in i:
-                    self.model = torch.load(model+i)
-                    self.model.eval()
-                    best_models.append(self.model)
+            modelpath = project + '/'
+            for i in os.listdir(project + '/'):
+                if 'best_model' in i:
+                    model = torch.load(modelpath + str(i))
+                    model.eval()
+                    best_models.append(model)
         else:
             best_model = torch.load(project + '/best_model')
             best_model.eval()
@@ -243,8 +245,9 @@ class SchnetTraining:
                 predictions = []
                 for model in best_models:
                     pred = model(batch)
+                    print(pred['y'])
                     predictions.append(pred['y'].detach().cpu().numpy())
-                preds.append(np.mean(predictions))
+                preds.append([np.mean(predictions)])
             else:
                 pred = best_model(batch)
                 preds.append(pred['y'].detach().cpu().numpy())
@@ -335,9 +338,17 @@ class SchnetTraining:
             # move batch to GPU, if necessary
             batch = {k: v.to('cuda') for k, v in batch.items()}
             # apply model
-            pred = best_model(batch)
+            if ensembleModel:
+                predictions = []
+                for model in best_models:
+                    pred = model(batch)
+                    print(pred['y'])
+                    predictions.append(pred['y'].detach().cpu().numpy())
+                preds.append([np.mean(predictions)])
+            else:
+                pred = best_model(batch)
+                preds.append(pred['y'].detach().cpu().numpy())
             targets.append(batch['KD'].detach().cpu().numpy())
-            preds.append(pred['y'].detach().cpu().numpy())
 
         targets_new = []
         preds_new = []
