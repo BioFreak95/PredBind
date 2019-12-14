@@ -22,7 +22,7 @@ class Preprocessing:
         dataset = list()
         print(ligPath)
         try:
-            sm = SmallMol(ligPath, force_reading=True)
+            sm = SmallMol(ligPath, force_reading=True, fixHs=False)
             x = np.mean(sm.get('coords')[:, 0])
             y = np.mean(sm.get('coords')[:, 1])
             z = np.mean(sm.get('coords')[:, 2])
@@ -32,7 +32,7 @@ class Preprocessing:
                 boxsize=self.boxsize
             )
         except:
-            sm = SmallMol(altLigPath, force_reading=True)
+            sm = SmallMol(altLigPath, force_reading=True, fixHs=False)
             x = np.mean(sm.get('coords')[:, 0])
             y = np.mean(sm.get('coords')[:, 1])
             z = np.mean(sm.get('coords')[:, 2])

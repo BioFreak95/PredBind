@@ -234,6 +234,7 @@ class PreprocessingSchnet:
             atom_list = []
             property_list = []
             ligcoords = featureFile[str(i) + '/ligcoords'].value
+
             ligAtNum = np.char.decode(featureFile[str(i) + '/lignum'].value)
             ligFeatures = featureFile[str(i) + '/lig'].value
             x = ligcoords[:, 0].mean()

@@ -13,13 +13,13 @@ class CreateFeatureset:
     def calcFeatures(number, ligPath, altLigPath, protPath, altProtPath, boxsize, targetpath):
         features = {}
         try:
-            sm = SmallMol(ligPath, force_reading=True)
+            sm = SmallMol(ligPath, force_reading=True, fixHs=False)
             x = np.mean(sm.get('coords')[:, 0])
             y = np.mean(sm.get('coords')[:, 1])
             z = np.mean(sm.get('coords')[:, 2])
             smallChannels, sm = voxeldescriptors.getChannels(sm)
         except:
-            sm = SmallMol(altLigPath, force_reading=True)
+            sm = SmallMol(altLigPath, force_reading=True, fixHs=False)
             x = np.mean(sm.get('coords')[:, 0])
             y = np.mean(sm.get('coords')[:, 1])
             z = np.mean(sm.get('coords')[:, 2])
