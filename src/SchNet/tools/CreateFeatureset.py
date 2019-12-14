@@ -43,7 +43,7 @@ class CreateFeatureset:
 
         except:
             try:
-                prot = Molecule(protPath)
+                prot = Molecule(altProtPath)
                 if prot.numAtoms > 50000:
                     factorx = boxsize[0] * 2.5
                     factory = boxsize[1] * 2.5
@@ -52,13 +52,13 @@ class CreateFeatureset:
                     prot.filter('x < ' + format(x + factorx) + ' and x > ' + format(x - factorx))
                     prot.filter('y < ' + format(y + factory) + ' and y > ' + format(y - factory))
                 prot.filter('protein')
-                prot = proteinPrepare(prot)
-                prot = autoSegment(prot)
-                prot = charmm.build(prot, ionize=False)
+                prot.bonds = prot._getBonds()
+                prot = prepareProteinForAtomtyping(prot)
+                prot.set(value='Se', field='element', sel='name SE')
                 protChannels, prot = voxeldescriptors.getChannels(prot)
             except:
                 try:
-                    prot = Molecule(altProtPath)
+                    prot = Molecule(protPath)
                     if prot.numAtoms > 50000:
                         factorx = boxsize[0] * 2.5
                         factory = boxsize[1] * 2.5
@@ -67,69 +67,29 @@ class CreateFeatureset:
                         prot.filter('x < ' + format(x + factorx) + ' and x > ' + format(x - factorx))
                         prot.filter('y < ' + format(y + factory) + ' and y > ' + format(y - factory))
                     prot.filter('protein')
-                    prot.bonds = prot._getBonds()
-                    prot = prepareProteinForAtomtyping(prot)
-                    prot.set(value='Se', field='element', sel='name SE')
+                    prot.filter('not resname 3EB')
+                    prot = proteinPrepare(prot)
+                    prot = autoSegment(prot)
+                    # Residues are not supported
+                    try:
+                        prot.mutateResidue('resname TPO', 'THR')
+                    except:
+                        pass
+                    try:
+                        prot.mutateResidue('resname MSE', 'MET')
+                    except:
+                        pass
+                    try:
+                        prot.mutateResidue('resname SEP', 'SER')
+                    except:
+                        pass
+                    prot = charmm.build(prot, ionize=False)
                     protChannels, prot = voxeldescriptors.getChannels(prot)
                 except:
-                    try:
-                        prot = Molecule(protPath)
-                        if prot.numAtoms > 50000:
-                            factorx = boxsize[0] * 2.5
-                            factory = boxsize[1] * 2.5
-                            factorz = boxsize[2] * 2.5
-                            prot.filter('z < ' + format(z + factorz) + ' and z > ' + format(z - factorz))
-                            prot.filter('x < ' + format(x + factorx) + ' and x > ' + format(x - factorx))
-                            prot.filter('y < ' + format(y + factory) + ' and y > ' + format(y - factory))
-                        prot.filter('protein')
-                        prot = proteinPrepare(prot)
-                        prot = autoSegment(prot)
-                        try:
-                            prot.mutateResidue('resname TPO', 'THR')
-                        except:
-                            pass
-                        try:
-                            prot.mutateResidue('resname MSE', 'MET')
-                        except:
-                            pass
-                        try:
-                            prot.mutateResidue('resname SEP', 'SER')
-                        except:
-                            pass
-                        prot = charmm.build(prot, ionize=False)
-                        protChannels, prot = voxeldescriptors.getChannels(prot)
-                    except:
-                        try:
-                            prot = Molecule(protPath)
-                            if prot.numAtoms > 50000:
-                                factorx = boxsize[0] * 2.5
-                                factory = boxsize[1] * 2.5
-                                factorz = boxsize[2] * 2.5
-                                prot.filter('z < ' + format(z + factorz) + ' and z > ' + format(z - factorz))
-                                prot.filter('x < ' + format(x + factorx) + ' and x > ' + format(x - factorx))
-                                prot.filter('y < ' + format(y + factory) + ' and y > ' + format(y - factory))
-                            prot.filter('protein')
-                            prot.filter('not resname 3EB')
-                            prot = autoSegment(prot)
-                            try:
-                                prot.mutateResidue('resname TPO', 'THR')
-                            except:
-                                pass
-                            try:
-                                prot.mutateResidue('resname MSE', 'MET')
-                            except:
-                                pass
-                            try:
-                                prot.mutateResidue('resname SEP', 'SER')
-                            except:
-                                pass
-                            prot = charmm.build(prot, ionize=False)
-                            protChannels, prot = voxeldescriptors.getChannels(prot)
-                        except:
-                            f = open("../../Data/prep_log.txt", "a")
-                            f.writelines('Protein ' + protPath + ' leads to errors! Proteinnumber: ' + str(number) + '\n')
-                            f.close()
-                            protChannels = None
+                    f = open("../../Data/prep_log.txt", "a")
+                    f.writelines('Protein ' + protPath + ' leads to errors! Proteinnumber: ' + str(number) + '\n')
+                    f.close()
+                    protChannels = None
         features['protChannels'] = protChannels
         features['prot'] = prot
         return features

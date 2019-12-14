@@ -90,8 +90,22 @@ class Preprocessing:
                     prot.filter('x < ' + format(x + factorx) + ' and x > ' + format(x - factorx))
                     prot.filter('y < ' + format(y + factory) + ' and y > ' + format(y - factory))
                 prot.filter('protein')
+                prot.filter('not resname 3EB')
                 prot = proteinPrepare(prot)
                 prot = autoSegment(prot)
+                prot.set(value='Se', field='element', sel='name SE')
+                try:
+                    prot.mutateResidue('resname TPO', 'THR')
+                except:
+                    pass
+                try:
+                    prot.mutateResidue('resname MSE', 'MET')
+                except:
+                    pass
+                try:
+                    prot.mutateResidue('resname SEP', 'SER')
+                except:
+                    pass
                 prot = charmm.build(prot, ionize=False)
                 f, c, n = voxeldescriptors.getVoxelDescriptors(
                     prot,
@@ -118,43 +132,12 @@ class Preprocessing:
                         boxsize=self.boxsize
                     )
                 except:
-                    try:
-                        prot = Molecule(protPath)
-                        if prot.numAtoms > 30000:
-                            factorx = self.boxsize[0] * 2.5
-                            factory = self.boxsize[1] * 2.5
-                            factorz = self.boxsize[2] * 2.5
-                            prot.filter('z < ' + format(z + factorz) + ' and z > ' + format(z - factorz))
-                            prot.filter('x < ' + format(x + factorx) + ' and x > ' + format(x - factorx))
-                            prot.filter('y < ' + format(y + factory) + ' and y > ' + format(y - factory))
-                        prot.filter('protein')
-                        prot = proteinPrepare(prot)
-                        prot = autoSegment(prot)
-                        try:
-                            prot.mutateResidue('resname TPO', 'THR')
-                        except:
-                            pass
-                        try:
-                            prot.mutateResidue('resname MSE', 'MET')
-                        except:
-                            pass
-                        try:
-                            prot.mutateResidue('resname SEP', 'SER')
-                        except:
-                            pass
-                        prot = charmm.build(prot, ionize=False)
-                        f, c, n = voxeldescriptors.getVoxelDescriptors(
-                            prot,
-                            center=[x, y, z],
-                            boxsize=self.boxsize
-                        )
-                    except:
-                        f = open("../../Data/prep_log.txt", "a")
-                        f.writelines('Protein ' + protPath + ' leads to errors! Proteinnumber: ' + str(number) + '\n')
-                        f.close()
-                        f = np.random.rand(13824, 8)
-                        c = np.random.rand(13824, 3)
-                        n = [24, 24, 24]
+                    f = open("../../Data/prep_log.txt", "a")
+                    f.writelines('Protein ' + protPath + ' leads to errors! Proteinnumber: ' + str(number) + '\n')
+                    f.close()
+                    f = np.random.rand(13824, 8)
+                    c = np.random.rand(13824, 3)
+                    n = [24, 24, 24]
         return f, c, n
 
     @staticmethod
