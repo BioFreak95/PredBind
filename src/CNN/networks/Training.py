@@ -99,6 +99,7 @@ class Training:
                 else:
                     prediction = self.calcPred(pred, remember=remember, batchnum=batchnum)
                 batch_losses.append(out)
+            else:
                 prediction = out
             batchnum += 1
 
@@ -166,7 +167,7 @@ class Training:
 
             return error, labels, outs
         else:
-            kwargs = {'num_workers': 4}
+            kwargs = {'num_workers': 8}
             indices = np.arange(n_datapoints)
             test_set = OwnDataset(indices, datapath, rotations=False)
             test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
@@ -210,7 +211,7 @@ class Training:
         train_rmse = []
         test_rmse = []
         if kwargs is None:
-            kwargs = {'num_workers': 4}
+            kwargs = {'num_workers': 8}
 
         indices = np.arange(n_datapoints)
         train_size = int(prct_train * n_datapoints)
