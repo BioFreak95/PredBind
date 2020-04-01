@@ -1,9 +1,8 @@
 import sys
-
-sys.path.append('/home/max/Dokumente/Masterarbeit/PredBind')
-print(sys.path)
+sys.path.append('../../')
 from src.CNN.tools.Preprocessing import *
 import os
+from tqdm import tqdm
 
 # The preprocessing was a reproduction of the KDeep-paper
 # (Jose Jimenez, KDEEP: Protein–Ligand Absolute Binding Affinity Prediction via 3D-Convolutional Neural Networks)
@@ -25,31 +24,44 @@ prep = Preprocessing()
 # this can most of the time be fixed by convert the pdb to mol2 and use this instead. -> Make this only if necessary
 # -> converting is expensive and can crash the system for big molecules
 
+print("LOG: Processing train data")
 trainPath = '../../Data/train/'
 protNamespace = '_protein'
 paths, complexes = Preprocessing.getAllMolPaths(trainPath, protNamespace + '.pdb')
-for i in range(len(paths)):
-    Preprocessing.convertData(namespace=protNamespace, startExt='pdb', targetExt='mol2', proteinnumber=i,
-                              path=trainPath)
+
+# Use 'convert.sh' instead of the following block
+# print("LOG: Converting data")
+# for p in tqdm(paths):
+#     Preprocessing.convertData(startExt='pdb', targetExt='mol2', path=p)
+    
+    
+# for i in range(len(paths)):
+#     Preprocessing.convertData(namespace=protNamespace, startExt='pdb', targetExt='mol2', proteinnumber=i,
+#                               path=trainPath)
 
 # Try first with pdb if this not work, change it to mol2 -> The reason is, that in pdbbind the data comes
 # from experiments and can sometimes a little bit broken -> In this case it can not be readed -> converting can help
 
+print("LOG: Creating voxelized file")
 prep.createVoxelisedFile(datapath='../../Data/train/', savepointnum=50, protNamespace='_protein.pdb',
                          ligNamespace='_ligand.mol2', namespace='../../Data/temp/train/train',
-                         altProNamespace='_protein.mol2', altLigNamespace='_ligand.pdb', startpoint=600)
+                         altProNamespace='_protein.mol2', altLigNamespace='_ligand.pdb')
 
 # Repeat the same for test-data
+print("LOG: Processing test data")
 testPath = '../../Data/test/'
 protNamespace = '_protein'
 paths, complexes = Preprocessing.getAllMolPaths(trainPath, protNamespace + '.pdb')
-for i in range(len(paths)):
-    Preprocessing.convertData(namespace=protNamespace, startExt='pdb', targetExt='mol2', proteinnumber=i, path=testPath)
 
+# Use 'convert.sh' instead of the following block
+# print("LOG: Converting data")
+# for i in range(len(paths)):
+#     Preprocessing.convertData(namespace=protNamespace, startExt='pdb', targetExt='mol2', proteinnumber=i, path=testPath)
+
+print("LOG: Creating voxellized file")
 prep.createVoxelisedFile(datapath='../../Data/test/', savepointnum=50, protNamespace='_protein.pdb',
                          ligNamespace='_ligand.mol2', namespace='../../Data/temp/test/test',
-                         altProNamespace='_protein.mol2',
-                         altLigNamespace='_ligand.pdb')
+                         altProNamespace='_protein.mol2', altLigNamespace='_ligand.pdb')
 
 # If there are errors and the code interrupts, you can set the startpoint to the last intermediate step
 # If everything works you can combine all intermediate files to one big dataset
@@ -58,8 +70,10 @@ for f in os.scandir('../../Data/temp/train'):
     dataTrain.append(f.name)
 dataTrain.sort()
 
+print("LOG: Get training labels")
 trainLabels = Preprocessing.getLabels('../../Data/train/', '../../Data/index/INDEX_refined_data.2016')
 
+print("LOG: Creating train hdf5 file")
 newFile = h5py.File('../../Data/train.hdf5')
 k = 0
 for i in range(int(np.ceil(3767 / 50))):
@@ -79,8 +93,10 @@ for f in os.scandir('../../Data/temp/test'):
     dataTest.append(f.name)
 dataTest.sort()
 
+print("LOG: Get test labels")
 testsLabels = Preprocessing.getLabels('../../Data/test/', '../../Data/index/INDEX_refined_data.2016')
 
+print("LOG: Creating test hdf5 file")
 newFile = h5py.File('../../Data/test.hdf5')
 k = 0
 for i in range(int(np.ceil(290 / 50))):

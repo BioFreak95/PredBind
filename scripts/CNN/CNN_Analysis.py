@@ -7,7 +7,7 @@ import h5py
 
 # Output_plot
 
-Path = 'Data/results/CNN/'
+Path = '../../Data/results/CNN/'
 
 File = h5py.File(Path + 'Bench.hdf5', 'r')
 labels = File['lables'].value
@@ -38,8 +38,8 @@ plt.plot(x,y, 'yo', x, fit_fn(x), '--k')
 plt.xlabel('Target')
 plt.ylabel('Output of Network')
 plt.title('Output of Pytorch-trained Network for Benchmark-Set')
-plt.xlim(1,13)
-plt.ylim(1,13)
+# plt.xlim(1,13)
+# plt.ylim(1,13)
 plt.text(1, -1.5, txt)
 plt.savefig(Path + 'Output_Pytorch_MSE_80_20.png', bbox_inches='tight')
 File.close()
@@ -56,8 +56,8 @@ plt.plot(test_mse, label="Validation Loss")
 plt.plot(train_mse, label="Training Loss")
 plt.xlabel('Epoch')
 plt.ylabel('MSE')
-plt.ylim(0,5)
-plt.xlim(0,100)
+# plt.ylim(0,5)
+# plt.xlim(0,100)
 plt.yticks(np.arange(0, 5, 0.5))
 plt.legend()
 plt.text(-1, -1, 'Lowest Val-loss: ' + str(np.min(test_mse)))

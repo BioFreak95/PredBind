@@ -18,7 +18,7 @@ class Preprocessing:
             boxsize = [24, 24, 24]
         self.boxsize = list(boxsize)
 
-    def calcDatasetVoxel(self, protPath, ligPath, number, altProtPath, altLigPath):
+    def calcDatasetVoxel(self, protPath, ligPath, altProtPath, altLigPath):
         dataset = list()
         print(ligPath)
         try:
@@ -41,7 +41,7 @@ class Preprocessing:
                 center=[x, y, z],
                 boxsize=self.boxsize
             )
-        f, c, n = self.calcProtVoxel(x, y, z, protPath, number, altProtPath)
+        f, c, n = self.calcProtVoxel(x, y, z, protPath, altProtPath)
         feature_protein = f
         feature_protein_shaped = f.reshape(n[0], n[1], n[2], f.shape[1])
         feature_ligand = fs
@@ -59,7 +59,7 @@ class Preprocessing:
     # https://github.com/Acellera/moleculekit/issues/12, https://github.com/Acellera/moleculekit/issues/13 and
     # https://github.com/Acellera/moleculekit/issues/14
     # Feel free to change this part of the code.
-    def calcProtVoxel(self, x, y, z, protPath, number, altProtPath):
+    def calcProtVoxel(self, x, y, z, protPath, altProtPath):
         try:
             prot = Molecule(protPath)
             if prot.numAtoms > 50000:
@@ -133,7 +133,7 @@ class Preprocessing:
                     )
                 except:
                     f = open("../../Data/prep_log.txt", "a")
-                    f.writelines('Protein ' + protPath + ' leads to errors! Proteinnumber: ' + str(number) + '\n')
+                    f.writelines('Protein ' + protPath + ' leads to errors!')
                     f.close()
                     f = np.random.rand(13824, 8)
                     c = np.random.rand(13824, 3)
@@ -196,20 +196,24 @@ class Preprocessing:
         if complexnames is None:
             complexnames = Preprocessing.getComplexDirNames(complex_data_path)
         with open(index_path) as f:
-            reader = csv.reader(f, delimiter='\t')
+            reader = csv.reader(f, delimiter=' ')
             data = [(col1)
                     for col1 in reader]
-        datas = []
-        for i in range(len(data)):
-            datas.append(data[i][0].split(' '))
+            data = [[i for i in d if i != ''] for d in data]
+#         datas = []
+#         for i in range(len(data)):
+#             datas.append(data[i][0].split(' '))
+        datas = [d for d in data if d[0] != '#']
         labels = []
-        complexes = list(np.array(datas)[:, 0])
+        complexes = [i[0] for i in datas]
+        #complexes = list(np.array(datas)[:, 0])
         for i in range(len(complexnames)):
             index = complexes.index(complexnames[i])
-            label = Preprocessing.extractKValue(datas[index])
+            label = float(datas[index][3])
+            #label = Preprocessing.extractKValue(datas[index])
             labels.append(label)
-        for i in range(len(labels)):
-            labels[i] = -np.log10(labels[i])
+        #for i in range(len(labels)):
+        #    labels[i] = -np.log10(labels[i])
         return labels
 
     @staticmethod
@@ -237,7 +241,6 @@ class Preprocessing:
     def createVoxelisedFile(self, datapath, savepointnum, protNamespace, altProNamespace, altLigNamespace, ligNamespace,
                             namespace='../Data/HDF5/data', startpoint=0, complexes=None):
         j = 0
-        print(complexes)
         protPaths, c = Preprocessing.getAllMolPaths(datapath, protNamespace, complexes=complexes)
         altprotPaths, c = Preprocessing.getAllMolPaths(datapath, altProNamespace, complexes=complexes)
         ligPaths, c = Preprocessing.getAllMolPaths(datapath, ligNamespace, complexes=complexes)
@@ -248,19 +251,30 @@ class Preprocessing:
                 file.close()
                 file = h5py.File(namespace + "{0:0=5d}".format(i) + '.hdf5')
                 j = 0
-            data = self.calcDatasetVoxel(protPath=protPaths[i], ligPath=ligPaths[i], number=i,
+            data = self.calcDatasetVoxel(protPath=protPaths[i], ligPath=ligPaths[i],
                                          altProtPath=altprotPaths[i], altLigPath=altLigPaths[i])[0]
             file[format(j)] = data
             print(i, 'of', len(ligPaths))
             j += 1
         file.close()
-
+        
+        
     @staticmethod
-    def convertData(namespace, startExt, targetExt, proteinnumber, path):
-        paths, complexes = Preprocessing.getAllMolPaths(path, namespace + '.' + startExt)
-        w = pybel.readfile(startExt, paths[proteinnumber])
-        molec = next(w)
-        out = pybel.Outputfile(targetExt, path + complexes[proteinnumber] + '/' + complexes[proteinnumber] +
-                               namespace + '.' + targetExt)
-        out.write(molec)
+    def convertData(startExt, targetExt, path):
+        outputfile = f"{os.path.splitext(path)[0]}.{targetExt}"
+        if os.path.isfile(outputfile): return
+        w = pybel.readfile(startExt, path)
+        mol = next(w)
+        out = pybel.Outputfile(targetExt, outputfile)
+        out.write(mol)
         out.close()
+
+#     @staticmethod
+#     def convertData(namespace, startExt, targetExt, proteinnumber, path):
+#         paths, complexes = Preprocessing.getAllMolPaths(path, namespace + '.' + startExt)
+#         w = pybel.readfile(startExt, paths[proteinnumber])
+#         molec = next(w)
+#         out = pybel.Outputfile(targetExt, path + complexes[proteinnumber] + '/' + complexes[proteinnumber] +
+#                                namespace + '.' + targetExt)
+#         out.write(molec)
+#         out.close()
