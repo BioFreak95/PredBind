@@ -25,7 +25,7 @@ class OwnDataset(Dataset):
             else:
                 data = file[str(data_idx) + '/data'][()][0]
             label = file[str(data_idx) + '/label'][()]
-            label = -np.log10(np.exp(-label))
+            #label = -np.log10(np.exp(-label))
 
         return data, label
 

@@ -145,7 +145,7 @@ class Training:
                 for j in range(24):
                     with h5py.File(datafile, 'r') as file:
                         data = rot.rotation(data=file[str(i) + '/data'][()][0], k=j)
-                        label = -np.log10(np.exp(-(file[str(i) + '/label'][()])))
+                        label = file[str(i) + '/label'][()]
                     data = torch.from_numpy(data.reshape(1, 16, 24, 24, 24).copy()).float().cuda()
                     if ensemble:
                         outall = []
@@ -213,23 +213,17 @@ class Training:
         if kwargs is None:
             kwargs = {'num_workers': 8}
 
-        indices = np.arange(n_datapoints)
-        train_size = int(prct_train * n_datapoints)
-        test_size = n_datapoints - train_size
-        train, test = torch.utils.data.random_split(indices, [train_size, test_size])
-        train_set = OwnDataset(train, train_path, rotations=augmentation)
-
-        if test_path is None:
-            test_set = OwnDataset(test, train_path, rotations=False)
-        else:
-            test_set = OwnDataset(np.arange(n_test), test_path, rotations=False)
+#         indices = np.arange(n_datapoints)
+#         train_size = int(prct_train * n_datapoints)
+#         test_size = n_datapoints - train_size
+#         train, test = torch.utils.data.random_split(indices, [train_size, test_size])
+        # Use the entire refined set as train set and core set as test/validation set
+        train_set = OwnDataset(np.arange(n_datapoints), train_path, rotations=augmentation)
+        test_set = OwnDataset(np.arange(n_test), test_path, rotations=False) # Data is augmented in self.testing(rotation=True)
 
         train_dataloader = DataLoader(dataset=train_set, batch_size=batch_size_train, shuffle=True, **kwargs)
-        if ensemble:
-            test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
-        else:
-            test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
-
+        test_dataloader = DataLoader(dataset=test_set, batch_size=1, shuffle=False, **kwargs)
+        
         best_losses = []
 
         for epoch in range(epochs):
