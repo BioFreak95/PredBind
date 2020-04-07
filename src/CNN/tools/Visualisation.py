@@ -4,6 +4,7 @@ import mdtraj as md
 import pandas as pd
 
 
+# This class is not used anymore, but give some interesting functions
 class Visualisation:
 
     def fastVoxelPlot(self, data, complexid, featureid):

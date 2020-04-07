@@ -32,6 +32,7 @@ class Preprocessing:
                 boxsize=self.boxsize
             )
         except:
+            # if the normal file is broke, you can use an alternative format
             sm = SmallMol(altLigPath, force_reading=True, fixHs=False)
             x = np.mean(sm.get('coords')[:, 0])
             y = np.mean(sm.get('coords')[:, 1])
@@ -165,6 +166,7 @@ class Preprocessing:
         import os
         os.remove(path)
 
+    # Calculate the kvalues
     @staticmethod
     def extractKValue(index_row):
         label = []
@@ -191,10 +193,10 @@ class Preprocessing:
             raise NotImplementedError
         return k
 
+    # calculate labels by using the index files of pdbbind
     @staticmethod
-    def getLabels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016', complexnames=None):
-        if complexnames is None:
-            complexnames = Preprocessing.getComplexDirNames(complex_data_path)
+    def calcLabels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016'):
+        complexnames = Preprocessing.getComplexDirNames(complex_data_path)
         with open(index_path) as f:
             reader = csv.reader(f, delimiter='\t')
             data = [(col1)
@@ -210,6 +212,26 @@ class Preprocessing:
             labels.append(label)
         for i in range(len(labels)):
             labels[i] = -np.log10(labels[i])
+        return labels
+
+    # In the pdbbind, the rounded labels are already given. So also this can be used.
+    @staticmethod
+    def getLabels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016'):
+        complexnames = Preprocessing.getComplexDirNames(complex_data_path)
+        with open(index_path) as f:
+            reader = csv.reader(f, delimiter='\t')
+            data = [(col1)
+                    for col1 in reader]
+        datas = []
+        for i in range(len(data)):
+            datas.append(data[i][0].split(' '))
+        labels = []
+        complexes = list(np.array(datas)[:, 0])
+        for i in range(len(complexnames)):
+            index = complexes.index(complexnames[i])
+            print(datas[index][3])
+            label = np.float(datas[index][3])
+            labels.append(label)
         return labels
 
     @staticmethod
@@ -234,6 +256,7 @@ class Preprocessing:
             dataset.append(self.calcDatasetVoxel(protPaths[i], ligPaths[i], i)[0])
         return dataset
 
+    # Get all together and calculate the voxelised data and save it to the file
     def createVoxelisedFile(self, datapath, savepointnum, protNamespace, altProNamespace, altLigNamespace, ligNamespace,
                             namespace='../Data/HDF5/data', startpoint=0, complexes=None):
         j = 0
@@ -243,6 +266,7 @@ class Preprocessing:
         ligPaths, c = Preprocessing.getAllMolPaths(datapath, ligNamespace, complexes=complexes)
         altLigPaths, c = Preprocessing.getAllMolPaths(datapath, altLigNamespace, complexes=complexes)
         file = h5py.File(namespace + "{0:0=5d}".format(0) + '.hdf5')
+        # Create savepoints. If necessary you can start the process new, starting from the savepoint
         for i in range(startpoint, len(ligPaths)):
             if (i % savepointnum == 0):
                 file.close()

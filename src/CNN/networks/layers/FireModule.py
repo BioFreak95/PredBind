@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 
+# creates the fireModule. See KDeep-Paper
 class FireModule(torch.nn.Module):
 
     def __init__(self, in_channels, n_squeeze_filter):

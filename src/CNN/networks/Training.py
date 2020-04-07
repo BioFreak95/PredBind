@@ -10,6 +10,7 @@ import h5py
 import os
 
 
+# Training-class for CNN
 class Training:
     def __init__(self, model=None, optimizer=None):
         if model is None:
@@ -25,6 +26,7 @@ class Training:
         self.bestModel = self.model
         self.epochLosses = []
 
+    #Training procedure
     def training(self, epoch, train_dataloader, dataset):
         self.model.train()
         mse_list = []
@@ -53,6 +55,7 @@ class Training:
                                                                                           dataset.__len__()))
         return np.mean(mse_list), np.mean(rmse_list)
 
+    # Tool-Class to calculate the prediction, if ensemble-models were used. -> Only used in validation not in training
     def calcPred(self, prediction, remember, batchnum):
         preds = []
         preds.append(prediction)
@@ -68,6 +71,7 @@ class Training:
         print(preds)
         return preds
 
+    # Testing (validation)
     def testing(self, epoch, test_dataloader, dataset, ensemble=False, remember=10, rotation=True):
         self.model.eval()
         mse_list = []
@@ -118,7 +122,8 @@ class Training:
                                                                                          dataset.__len__()))
         return np.mean(mse_list), np.mean(rmse_list)
 
-    def benchmark(self, n_datapoints, datapath, rotations=True, model=None, ensemble=False):
+    # Benchmark very similar to validation
+    def benchmark(self, n_datapoints, datapath, rotations=True, model=None, ensemble=False, version = 2):
         if ensemble:
             best_models = []
             for i in os.listdir(model):
@@ -144,7 +149,11 @@ class Training:
                 for j in range(24):
                     with h5py.File(datafile, 'r') as file:
                         data = rot.rotation(data=file[str(i) + '/data'][()][0], k=j)
-                        label = -np.log10(np.exp(-(file[str(i) + '/label'][()])))
+                        # In the old version, wrong log was used -> recalc
+                        if version == 1:
+                            label = -np.log10(np.exp(-(file[str(i) + '/label'][()])))
+                        else:
+                            label = file[str(i) + '/label'][()]
                     data = torch.from_numpy(data.reshape(1, 16, 24, 24, 24).copy()).float().cuda()
                     if ensemble:
                         outall = []
@@ -200,6 +209,7 @@ class Training:
 
             return error, target1, outs1
 
+    # overall model training -> combines training, validation and testing
     def fit(self, epochs, train_path, result_datapath, kwargs=None, n_datapoints=3767, prct_train=0.8, test_path=None, n_test=290,
             batch_size_train=64, batch_size_test=32, ensemble=False, remember=10, augmentation=True):
         print(self.model)
@@ -212,6 +222,7 @@ class Training:
         if kwargs is None:
             kwargs = {'num_workers': 4}
 
+        # split sets and create datasets
         indices = np.arange(n_datapoints)
         train_size = int(prct_train * n_datapoints)
         test_size = n_datapoints - train_size
@@ -231,6 +242,7 @@ class Training:
 
         best_losses = []
 
+        # start training
         for epoch in range(epochs):
             mse, rmse = self.training(epoch, train_dataloader, train_set)
             train_mse.append(mse)

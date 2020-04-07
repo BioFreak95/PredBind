@@ -4,8 +4,9 @@ import numpy as np
 import h5py
 
 
+# Creates a own Dataloader for pytorch
 class OwnDataset(Dataset):
-    def __init__(self, indices, path, rotations=True):
+    def __init__(self, indices, path, rotations=True, version=2):
         self.hdf5file = path
         self.rot = Rotations()
         self.rotations = rotations
@@ -14,6 +15,7 @@ class OwnDataset(Dataset):
         else:
             self.indices = indices
         self.length = len(indices)
+        self.version = version
 
     def __getitem__(self, index):
         data_idx = self.indices[index]
@@ -25,7 +27,10 @@ class OwnDataset(Dataset):
             else:
                 data = file[str(data_idx) + '/data'][()][0]
             label = file[str(data_idx) + '/label'][()]
-            label = -np.log10(np.exp(-label))
+
+            # In the old version of the code, the labels were calculated with the natural logarithm instead with the log10. So this is the recalc
+            if self.version == 1:
+                label = -np.log10(np.exp(-label))
 
         return data, label
 
