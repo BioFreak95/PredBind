@@ -1,7 +1,3 @@
-import sys
-
-sys.path.append('/home/max/Dokumente/Masterarbeit/PredBind')
-print(sys.path)
 from src.CNN.tools.Preprocessing import *
 import os
 

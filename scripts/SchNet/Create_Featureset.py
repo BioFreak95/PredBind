@@ -1,5 +1,3 @@
-import sys
-sys.path.append('/home/max/Dokumente/Masterarbeit/PredBind')
 from src.SchNet.tools.CreateFeatureset import CreateFeatureset
 
 CreateFeatureset.createFeatureset(datapath='../../../Data/test/',

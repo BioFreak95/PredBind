@@ -1,4 +1,3 @@
-# Here a Example for a Analysis will be added in future
 import scipy.stats
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,6 +12,7 @@ File = h5py.File(Path + 'Bench.hdf5', 'r')
 labels = File['lables'].value
 outs = File['outputs'].value
 
+# create estimation and labels out of the format of this package
 e2 = []
 labels1 = []
 outs1 = []
@@ -21,6 +21,7 @@ for i in range(len(labels)):
     labels1.append(labels[i])
     outs1.append(outs[i])
 
+# Create a text-snippet, which contains informative values
 txt = ("MSE: " + str(np.round(np.mean(e2), 4)) +
        ", RMSE: " + str(np.round(np.sqrt(np.mean(e2)), 4)) +
        ", Pearson: " + str(np.round(scipy.stats.pearsonr(labels1, outs1)[0], 4)) +
@@ -35,6 +36,7 @@ fit_fn = np.poly1d(fit)
 
 plt.plot(x,y, 'yo', x, fit_fn(x), '--k')
 
+# Plot the results. Estimation vs true label
 plt.xlabel('Target')
 plt.ylabel('Output of Network')
 plt.title('Output of Pytorch-trained Network for Benchmark-Set')
@@ -45,17 +47,19 @@ plt.savefig(Path + 'Output_Pytorch_MSE_80_20.png', bbox_inches='tight')
 File.close()
 plt.clf()
 
-# Hist-Plot
-
+# History-Plot
+# Define
 File = h5py.File(Path + 'history.hdf5', 'r')
 test_mse = File['test_mse'][()]
 train_mse = File['train_mse'][()]
 test_rmse = File['test_rmse'][()]
 train_rmse = File['train_rmse'][()]
+# Plot
 plt.plot(test_mse, label="Validation Loss")
 plt.plot(train_mse, label="Training Loss")
 plt.xlabel('Epoch')
 plt.ylabel('MSE')
+# Manipulate Axis, create texts and save figure
 plt.ylim(0,5)
 plt.xlim(0,100)
 plt.yticks(np.arange(0, 5, 0.5))

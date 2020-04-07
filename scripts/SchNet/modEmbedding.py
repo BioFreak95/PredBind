@@ -1,7 +1,3 @@
-# Import Area
-import sys
-sys.path.append('/home/max/Dokumente/Masterarbeit/PredBind')
-
 from src.SchNet.tools.PreprocessingSchnet import PreprocessingSchnet
 from src.SchNet.network.Shiftedsigmoid import ShiftedSigmoid
 

@@ -1,7 +1,3 @@
-# Import Area
-import sys
-sys.path.append('/home/max/Dokumente/Masterarbeit/PredBind')
-
 from src.SchNet.tools.PreprocessingSchnet import PreprocessingSchnet
 from src.SchNet.network.Shiftedsigmoid import ShiftedSigmoid
 
@@ -58,6 +54,7 @@ model = schnetpack.representation.SchNet(use_noise=False, noise_mean=0.0, noise_
                                          normalize_filter=False, coupled_interactions=False, trainable_gaussians=False,
                                          n_interactions=5, cutoff=2.5,
                                          cutoff_network=schnetpack.nn.cutoff.CosineCutoff)
+
 # Modification of schnetpack allows an activation-function on the output of the output-network
 d = schnetpack.atomistic.Atomwise(n_in=20, aggregation_mode='avg',
                                   n_layers=4, mode='postaggregate') # , activation=F.relu)#, output_activation=act.forward)

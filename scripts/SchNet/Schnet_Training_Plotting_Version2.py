@@ -1,12 +1,15 @@
 from src.SchNet.network.SchnetTraining import SchnetTraining
 import schnetpack
 
+# This script used the new form of the training procedure. It is configured much faster, but you have less options for own modifications.
+
 nFilter = [64, 32, 16, 8]
 nAtoms = [64, 32, 16, 8]
 for a in nAtoms:
     for f in nFilter:
         schnet = SchnetTraining()
         resultfolder = 'resultsSchnet_' + str(a) + '_' + str(f)
+        # Training
         schnet.train(resultfolder=resultfolder, traindb='Data/dataset_80_10_train_combined_features.db',
                      benchdb='Data/dataset_80_10_test_features.db', traindata='Data/Schnet/trainSchnetKDeep.hdf5',
                      benchdata='Data/Schnet/testSchnetKDeep.hdf5',
@@ -23,6 +26,7 @@ for a in nAtoms:
                      outAct=schnetpack.nn.activations.shifted_softplus, outOutAct=None,
                      n_acc_steps=8, remember=10, ensembleModel=False, n_epochs=150, lr=1e-3, weight_decay=0)
 
+        # Plotting and save plots
         schnet.plotting(project=resultfolder, traindb='Data/dataset_80_10_train_combined_features.db',
                         benchdb='Data/dataset_80_10_test_features.db', traindata='Data/Schnet/trainSchnetKDeep.hdf5',
                         benchdata='Data/Schnet/testSchnetKDeep.hdf5',
