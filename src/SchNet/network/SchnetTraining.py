@@ -1,10 +1,8 @@
 # Import Area
 import sys
 import datetime
-
-sys.path.append('/home/max/Dokumente/Masterarbeit/PredBind')
-
 import os
+
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,6 +21,8 @@ from torch.optim import AdamW
 from torch.autograd import Variable
 
 
+# This class provides the complete training and plotting procedures. There are many configuration-options, which are self-explaining by the name.
+# More details tbd
 class SchnetTraining:
     def train(self, resultfolder, traindb='Data/dataset_10_12_train_combined.db', benchdb='Data/dataset_10_12_test.db',
               traindata='../../Data/combined1618/', benchdata='../../Data/test/',
@@ -47,6 +47,7 @@ class SchnetTraining:
 
         # Define Folder for Results
         Resultfolder = resultfolder
+        #You can activate shifted sigmoid
         #act = ShiftedSigmoid()
         if train_loader is None or val_loader is None:
             f = open("log.txt", "a")
@@ -121,6 +122,8 @@ class SchnetTraining:
         f = open("log.txt", "a")
         f.writelines(str(datetime.datetime.now()) + ' call of createLoader' + '\n')
         f.close()
+
+        # Creates the dataset. It is possible to obtain a file, to get always the same train-val split
         train = schnetpack.data.AtomsData(traindb,
                                           available_properties=properties,
                                           environment_provider=schnetpack.environment.TorchEnvironmentProvider(cutoff,
@@ -216,7 +219,6 @@ class SchnetTraining:
                                                                            natoms=natoms, props=props,
                                                                            ntrain=ntrain, ntest=ntest, splitfile=splitfile, noProtons=noProtons)
 
-        #val_loader = schnetpack.AtomsLoader(bench, batch_size=testBatchsize, shuffle=False, natoms=natoms, props=props)
         if train_length is None:
             length1 = int(ntrain - numVal)
         else:
@@ -224,6 +226,8 @@ class SchnetTraining:
         length2 = bench_length
 
         torch.nn.Module.dump_patches = True
+
+        # Load models -> multiple if ensemble models are used
         if ensembleModel:
             best_models = []
             modelpath = project + '/'
@@ -240,7 +244,8 @@ class SchnetTraining:
         for count, batch in enumerate(bench_loader):
             # move batch to GPU, if necessary
             batch = {k: v.to('cuda') for k, v in batch.items()}
-            # apply model
+
+            # apply models
             if ensembleModel:
                 predictions = []
                 for model in best_models:
@@ -254,6 +259,7 @@ class SchnetTraining:
             targets.append(batch['KD'].detach().cpu().numpy())
 
 
+        # Create a list with labels and predictions for calculations and plots
         targets_new = []
         preds_new = []
         for i in range(len(targets)):
@@ -266,9 +272,11 @@ class SchnetTraining:
         preds_new = np.reshape(preds_new, length2)
         targets_new = np.reshape(targets_new, length2)
 
+        # Calculate pearson and spearman
         pear = pearsonr(targets_new, preds_new)
         spear = spearmanr(targets_new, preds_new)
 
+        # Calculate the errors and count big (>5) and small (<1) errors
         diffs = []
         num_small = 0
         num_big = 0
@@ -289,6 +297,7 @@ class SchnetTraining:
         x = targets_new
         y = preds_new
 
+        # Create linear regression line
         fit = np.polyfit(x, y, 1)
         fit_fn = np.poly1d(fit)
 
@@ -296,17 +305,20 @@ class SchnetTraining:
 
         # fit_fn is now a function which takes in x and returns an estimate for y
 
+        # Plot labels vs predictions
         plt.plot(x, y, 'yo', x, fit_fn(x), '--k')
 
         plt.xlim(1 , 13)
         plt.ylim(1 , 13)
         plt.xlabel('Target [pK]')
         plt.ylabel('Prediction of the network[pK]')
-        # plt.title('Output of Pytorch-trained Network for Benchmark-Set')
+        plt.title('Output of Pytorch-trained Network for Benchmark-Set')
 
         plt.text(1, -1.2, txt)
         plt.savefig(project + '/' + name + '_output.png', bbox_inches='tight')
         plt.clf()
+
+        # Read History and Plot it
         loss = pandas.read_csv(project + '/log.csv')['Train loss'].to_numpy()
         val_loss = pandas.read_csv(project + '/log.csv')['Validation loss'].to_numpy()
         lr = pandas.read_csv(project + '/log.csv')['Learning rate'].to_numpy()
@@ -315,7 +327,7 @@ class SchnetTraining:
         plt.plot(loss, label="Training Loss", color='blue')
         plt.xlabel('Epoch')
         plt.ylabel('MSE')
-        # plt.title('Train History')
+        plt.title('Train History')
         plt.legend()
         min_loss = np.min(val_loss)
         plt.xlim(0, 100)
@@ -326,12 +338,15 @@ class SchnetTraining:
         plt.savefig(project + '/' + name + '_training.png', bbox_inches='tight')
         plt.clf()
 
+        # Plot lr change over epochs
         plt.plot(lr)
         plt.xlabel('Epoch')
         plt.ylabel('Learning rate')
-        # plt.title('Learning Rate')
+        plt.title('Learning Rate')
         plt.savefig(project + '/' + name + '_lr.png', bbox_inches='tight')
         plt.clf()
+
+        # Calculate and plot targets vs labels for train-set to get more information and find possible errors
         targets = []
         preds = []
         for count, batch in enumerate(train_loader):

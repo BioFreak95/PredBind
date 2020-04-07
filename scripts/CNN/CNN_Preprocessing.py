@@ -33,7 +33,7 @@ for i in range(len(paths)):
 
 prep.createVoxelisedFile(datapath='../../Data/train/', savepointnum=50, protNamespace='_protein.pdb',
                          ligNamespace='_ligand.mol2', namespace='../../Data/temp/train/train',
-                         altProNamespace='_protein.mol2', altLigNamespace='_ligand.pdb', startpoint=600)
+                         altProNamespace='_protein.mol2', altLigNamespace='_ligand.pdb', startpoint=0)
 
 # Repeat the same for test-data
 testPath = '../../Data/test/'

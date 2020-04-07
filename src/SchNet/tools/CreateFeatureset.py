@@ -8,8 +8,18 @@ import h5py
 import numpy as np
 
 
+# In SchNet, also a set of features can be used. In this work, the features out of the KDEEP-Paper where used.
+# They are calculated here in the same way as in the CNN-Part. See src/CNN/tools/Preprocessing
+
 class CreateFeatureset:
     @staticmethod
+    # This function contains a bunch of try-catch scenarios. It is the result of long process to reproduce the
+    # preprocessing of KDeep with the PDBBind-dataset
+    # (Jose Jimenez, KDEEP: Protein–Ligand Absolute Binding Affinity Prediction via 3D-Convolutional Neural Networks)
+    # The process is documented in following issues:
+    # https://github.com/Acellera/moleculekit/issues/12, https://github.com/Acellera/moleculekit/issues/13 and
+    # https://github.com/Acellera/moleculekit/issues/14
+    # Feel free to change this part of the code.
     def calcFeatures(number, ligPath, altLigPath, protPath, altProtPath, boxsize, targetpath):
         features = {}
         try:
@@ -94,6 +104,7 @@ class CreateFeatureset:
         features['prot'] = prot
         return features
 
+    # This function creates a hdf5 file, where all features from all complexes are saved with necessary details.
     @staticmethod
     def createFeatureset(datapath, indexpath, targetpath):
         labels = PreprocessingSchnet.getLabels(datapath, indexpath)

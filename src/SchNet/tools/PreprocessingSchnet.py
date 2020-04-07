@@ -55,6 +55,7 @@ class PreprocessingSchnet:
             raise NotImplementedError
         return k
 
+    # calculate labels by using the index files of pdbbind
     @staticmethod
     def calcLabels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016'):
         complexnames = PreprocessingSchnet.getComplexDirNames(complex_data_path)
@@ -76,6 +77,7 @@ class PreprocessingSchnet:
             labels[i] = -np.log10(labels[i])
         return labels
 
+    # In the pdbbind, the rounded labels are already given. So also this can be used.
     @staticmethod
     def getLabels(complex_data_path, index_path='Data/index/INDEX_refined_data.2016'):
         complexnames = PreprocessingSchnet.getComplexDirNames(complex_data_path)
@@ -96,6 +98,7 @@ class PreprocessingSchnet:
             labels.append(label)
         return labels
 
+    # Creates a classical database for schnetpack. Input are the files of the pdbbind-dataset
     @staticmethod
     def createDatabase(database, threshold=20, data_path='../Data/train/',
                        index_path='../Data/index/INDEX_refined_data.2016',
@@ -111,10 +114,14 @@ class PreprocessingSchnet:
         indexes = np.arange(len(proteinPaths[0]))
         np.random.shuffle(indexes)
 
+        # For oversampling, the data is split into 25 equally parts. Proteins with labels,
+        # which are low represented are taken more ofter, to simulate a equal distributed label distribution
         hist = np.histogram(labels, 25)
 
         for i in indexes:
             atom_list = []
+            # Reads the ligand and creates an list of ligand-atoms.
+            # Sometimes the sdf is not working so it uses the alternative pdb.
             try:
                 atoms2 = read(ligandPaths[0][i], format='sdf')
                 for at in atoms2:
@@ -134,6 +141,7 @@ class PreprocessingSchnet:
                     print('Does not work')
                     continue
 
+            # Generate the labels in the necessary format for schnetpack
             affi = PreprocessingSchnet.classLabel(labels[i], mode, label_type, classes=classes, n_classes=n_classes,
                                                   min_v=np.min(labels), max_v=np.max(labels))
 
@@ -141,16 +149,21 @@ class PreprocessingSchnet:
 
             atoms = read(proteinPaths[0][i], format='proteindatabank')
 
+            # Create protein-atom list
             for at in atoms:
                 dist = np.linalg.norm(at.position - mean)
                 if dist <= threshold:
                     atom_list.append(at)
 
+            # concat the protein and ligand atoms
             complexe = [ase.Atoms(atom_list, pbc=pbc)]
 
             if not oversample:
+                # Add the complex to the database
                 database.add_systems(complexe, affi)
             else:
+                # Calculate, how often a protein have to be added to a database,
+                # to simulate a equal distributed label distribution
                 classn = np.zeros(25)
                 for j in range(len(hist[1]) - 1):
                     if j == len(hist[1]) - 2:
@@ -174,6 +187,8 @@ class PreprocessingSchnet:
                 for _ in range(n_sampling):
                     database.add_systems(complexe, affi)
 
+    # allows the option, to get the classical label for MSE or something similar or split the labels into classes
+    # Then not a value will be predicted, but a class to which the label belongs (uses onehot-encoding)
     @staticmethod
     def classLabel(label, mode=None, label_type=None, min_v=None, max_v=None, classes=None, n_classes=1):
         if mode is None:
@@ -212,6 +227,9 @@ class PreprocessingSchnet:
             raise NotImplementedError
         return affi
 
+    # If you use this package to create a featureset, you can use this function to create a database.
+    # The input is the hdf5-file. The rest is the same as the function createDatabase
+    # -> (To understand code, look at comments in this function)
     @staticmethod
     def createDatabaseFromFeatureset(database, featureFile, length, threshold=20, mode=None,
                                      label_type=None, classes=None, n_classes=None, oversample=False, sample_factor=50,

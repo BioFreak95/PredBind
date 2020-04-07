@@ -3,6 +3,7 @@ import numpy as np
 import torch
 
 
+# A shifted sigmoid activation function
 class ShiftedSigmoid:
     def __init__(self):
         labels = PreprocessingSchnet.getLabels('../Data/train', '../Data/index/INDEX_refined_data.2016')
