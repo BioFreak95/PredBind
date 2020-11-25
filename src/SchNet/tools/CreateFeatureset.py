@@ -1,3 +1,5 @@
+# Please note, that for sure parts of the code are inspired by docs of the used packages. Especially docs of moleculekit and htmd was very helpful. Please have a look at https://software.acellera.com/docs/latest/htmd/index.html
+
 from moleculekit.tools.atomtyper import prepareProteinForAtomtyping
 from moleculekit.tools import voxeldescriptors
 from moleculekit.smallmol.smallmol import SmallMol
