@@ -1,4 +1,4 @@
-# like mentioned in issue #3867 of pytorch (https://github.com/pytorch/pytorch/issues/3867)
+# like mentioned in issue #3867 of pytorch (https://github.com/pytorch/pytorch/issues/3867) (Code is adopted from there)
 # -> no same padding in convolution in pytorch -> This implementation has the same behavior
 # like the same padding convolution in tensorflow
 
