@@ -1,3 +1,5 @@
+# For sure, parts of the code are inspired by the schnetpack tutorials and docs. Have a look at https://github.com/atomistic-machine-learning/schnetpack/tree/master/docs
+
 from src.SchNet.tools.PreprocessingSchnet import PreprocessingSchnet
 from src.SchNet.network.Shiftedsigmoid import ShiftedSigmoid
 
