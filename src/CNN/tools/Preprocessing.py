@@ -10,6 +10,8 @@ import numpy as np
 import csv
 import os
 
+# Please note: In this class, the preprocessing of the data, which is mentioned in the KDeep-Paper was tried to reproduced. 
+# (Jose Jimenez, KDEEP: Protein–Ligand Absolute Binding Affinity Prediction via 3D-Convolutional Neural Networks)
 
 class Preprocessing:
 
