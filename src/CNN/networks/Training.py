@@ -11,6 +11,8 @@ import os
 
 
 # Training-class for CNN
+# Some parts of the code and the prints are inspired by examples of the pytorch package. So please check this out:
+# For example: https://github.com/pytorch/examples/blob/master/mnist_hogwild/train.py, https://github.com/pytorch/examples
 class Training:
     def __init__(self, model=None, optimizer=None):
         if model is None:
@@ -44,7 +46,7 @@ class Training:
             rmse_list.append(np.sqrt(loss.data.item()))
             loss.backward()
             self.optimizer.step()
-
+            # Print is adapted from https://github.com/pytorch/examples/blob/master/mnist_hogwild/train.py
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} MSE-Mean: {:.6f} RMSE-Mean:  {:.6f}'.format(
                 epoch, batch_id * len(data), dataset.__len__(),
                        100. * (batch_id * len(data)) / dataset.__len__(), loss.data.item(), np.mean(mse_list),
@@ -110,6 +112,7 @@ class Training:
             mse_list.append(loss.data.item())
             rmse_list.append(np.sqrt(loss.data.item()))
 
+            # Print is adapted from https://github.com/pytorch/examples/blob/master/mnist_hogwild/train.py
             print('Test Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} MSE-Mean: {:.6f} RMSE-Mean:  {:.6f}'.format(
                 epoch, batch_id * len(data), dataset.__len__(),
                        100. * (batch_id * len(data)) / dataset.__len__(), loss.data.item(), np.mean(mse_list),
