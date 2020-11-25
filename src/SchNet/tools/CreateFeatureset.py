@@ -9,6 +9,7 @@ import numpy as np
 
 
 # In SchNet, also a set of features can be used. In this work, the features out of the KDEEP-Paper where used.
+# (Jose Jimenez, KDEEP: Protein–Ligand Absolute Binding Affinity Prediction via 3D-Convolutional Neural Networks)
 # They are calculated here in the same way as in the CNN-Part. See src/CNN/tools/Preprocessing
 
 class CreateFeatureset:
