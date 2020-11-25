@@ -1,3 +1,6 @@
+# Some parts of the code and the prints are inspired by examples of the pytorch package. So please check this out:
+# For example: https://github.com/pytorch/examples/blob/master/mnist_hogwild/train.py, https://github.com/pytorch/examples
+
 from src.CNN.networks.CNN import CNN
 from src.CNN.networks.layers.OwnDataset import OwnDataset
 from src.CNN.tools.Rotations import Rotations
@@ -11,8 +14,6 @@ import os
 
 
 # Training-class for CNN
-# Some parts of the code and the prints are inspired by examples of the pytorch package. So please check this out:
-# For example: https://github.com/pytorch/examples/blob/master/mnist_hogwild/train.py, https://github.com/pytorch/examples
 class Training:
     def __init__(self, model=None, optimizer=None):
         if model is None:
