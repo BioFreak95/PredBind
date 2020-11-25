@@ -4,6 +4,7 @@ import torch.nn as nn
 
 
 # creates the fireModule. See KDeep-Paper
+# (Jose Jimenez, KDEEP: Protein–Ligand Absolute Binding Affinity Prediction via 3D-Convolutional Neural Networks)
 class FireModule(torch.nn.Module):
 
     def __init__(self, in_channels, n_squeeze_filter):
