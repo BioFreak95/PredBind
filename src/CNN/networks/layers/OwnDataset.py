@@ -5,6 +5,7 @@ import h5py
 
 
 # Creates a own Dataloader for pytorch
+# See https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
 class OwnDataset(Dataset):
     def __init__(self, indices, path, rotations=True, version=2):
         self.hdf5file = path
