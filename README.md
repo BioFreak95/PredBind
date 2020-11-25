@@ -1,3 +1,5 @@
+Firstly please note, that for sure, the docs and tutorials of all used packages were used as a source of information to create the code. So thanks to all creators for the effort of creating the docs and tutorials of their package!
+
 # PredBind
 Prediction of Binding Affinities using neuronal networks. This package was developed during my master-thesis. The topic was the prediction of binding affinities using SchNet. 
 * Schütt, Kristof T., et al. "SchNet–A deep learning architecture for molecules and materials." 
