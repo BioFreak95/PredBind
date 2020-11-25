@@ -63,6 +63,7 @@ optimizer = Adam(model.parameters())
 
 
 # This function counts the number of trainable parameters of the network
+# Taken from https://stackoverflow.com/questions/48393608/pytorch-network-parameter-calculation (Wasi Ahmad)
 def count_parameters(model):
     total_param = 0
     for name, param in model.named_parameters():
