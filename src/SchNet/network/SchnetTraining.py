@@ -169,6 +169,7 @@ class SchnetTraining:
 
         return train_loader, val_loader, bench_loader
 
+    # Taken from https://stackoverflow.com/questions/48393608/pytorch-network-parameter-calculation (Wasi Ahmad)
     @staticmethod
     def count_parameters(model):
         total_param = 0
