@@ -1,3 +1,10 @@
+# Please note, that for sure parts of the code are inspired by docs of the used packages. Especially docs of moleculekit and htmd was very helpful. 
+# Please have a look at https://software.acellera.com/docs/latest/htmd/index.html
+# Also examples and tutorials of pytorch are used for inspiration. So please check this out:
+# For example: https://github.com/pytorch/examples/blob/master/mnist_hogwild/train.py, https://github.com/pytorch/examples
+# https://pytorch.org/docs/stable/index.html
+# For sure, always the docs of all other packages were used as source of information.
+
 # Import Area
 import sys
 import datetime
