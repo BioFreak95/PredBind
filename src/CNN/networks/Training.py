@@ -281,6 +281,8 @@ class Training:
         hist.create_dataset('test_rmse', data=test_rmse)
         hist.close()
 
+    # This function counts the number of trainable parameters of the network
+    # Taken from https://stackoverflow.com/questions/48393608/pytorch-network-parameter-calculation (Wasi Ahmad)
     @staticmethod
     def count_parameters(model):
         total_param = 0
