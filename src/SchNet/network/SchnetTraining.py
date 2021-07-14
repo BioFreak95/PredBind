@@ -176,19 +176,23 @@ class SchnetTraining:
 
         return train_loader, val_loader, bench_loader
 
-    # Taken from https://stackoverflow.com/questions/48393608/pytorch-network-parameter-calculation (Wasi Ahmad)
-    @staticmethod
+    # Taken from https://stackoverflow.com/questions/48393608/pytorch-network-parameter-calculation (Wasi Ahmad https://stackoverflow.com/users/5352399/wasi-ahmad)
     def count_parameters(model):
-        total_param = 0
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                num_param = np.prod(param.size())
-                if param.dim() > 1:
-                    print(name, ':', 'x'.join(str(x) for x in list(param.size())), '=', num_param)
+        paramCount = 0
+        for parameterName, parameterValue in model.named_parameters():
+            if parameterValue.requires_grad:
+                n = np.prod(parameterValue.size())
+                if parameterValue.dim() <= 1:
+		            print(parameterName, ':', n)
                 else:
-                    print(name, ':', num_param)
-                total_param += num_param
-        return total_param
+                    layerSize = list(parameterValue.size())
+                    if (len(layerSize) > 0):
+                        layer = str(layerSize[0])
+                        for i in range(1, len(layerSize)):
+                            layer += "x"+  str(layerSize[i])
+                            print(parameterName, ':', layer , '=', n)                    
+                paramCount += n
+        return paramCount
 
     @staticmethod
     def mse_loss():
